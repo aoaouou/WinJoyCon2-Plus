@@ -352,6 +352,6 @@ def get_controller_manager() -> ControllerManager:
 
 
 def reset_controller_manager():
-    """Reset the global controller manager (for testing)""
+    """Reset the global controller manager (for testing)"""
     global _controller_manager
     _controller_manager = None

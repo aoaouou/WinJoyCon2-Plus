@@ -57,3 +57,8 @@ for t in targets:
         print(f"  skip (不存在) {t}")
     else:
         print(f"  rc={rc}  {t}")
+
+print("\n回收站校验：")
+# 用 SHQueryRecycleBinW 只看数量变化不直观，这里直接确认目标已不存在
+left = [t for t in targets if os.path.exists(t)]
+print("  残留:", left if left else "无")

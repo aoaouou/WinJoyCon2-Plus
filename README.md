@@ -1,12 +1,12 @@
+<div align="center">
+
 # WinJoyCon2-Plus
 
 ### 把 Switch 2 的 Joy-Con 2，变成 PC 上无所不能的操控神器
 
 **前无古人。这不是又一个手柄映射器 —— 这是 Joy-Con 2 在 Windows 上的完全体。**
 
-<div align="center">
-
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge)](https://www.microsoft.com/windows)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
 [![Controller](https://img.shields.io/badge/Controller-Joy--Con%202-E6007D?style=for-the-badge)](https://www.nintendo.com/us/store/products/joy-con-2/)
 [![Protocol](https://img.shields.io/badge/Transport-USB%2FIP-28A745?style=for-the-badge)](https://en.wikipedia.org/wiki/USB_over_IP)
 [![Language](https://img.shields.io/badge/UI-%E4%B8%AD%E6%96%87%20%2F%20English-FF6FAE?style=for-the-badge)](./README.md)
@@ -33,7 +33,7 @@
 
 ## 核心能力
 
-### 🎮 faithful 桥接（这件事本身已是首创）
+### 🎮  faithful 桥接（这件事本身已是首创）
 - 把 **Joy-Con 2（BLE）** 桥接为 **Switch 1 的 Joy-Con 1**（VID `057E` / PID `2006`·`2007`）
 - Ryujinx / Eden 等只认 JC1 的模拟器直接可用，识别为**左右分体**而非 Pro
 - 摇杆照 viiper 方案标定：center 2048 / 行程 2047 / 物理拉伸 900，回中精准、推满到边
@@ -67,7 +67,7 @@
 
 ## 安装与使用
 
-1. 安装 USB/IP（本机路径 `C:\Program Files\USBip\usbip.exe`）
+1. 安装 [USB/IP](https://github.com/cezanne/usbip-win)（本机路径 `C:\Program Files\USBip\usbip.exe`）
 2. 下载 Release 中的 `WinJoyCon2-Plus.exe`（或按下方命令自行构建）
 3. 手柄按 SYNC 键进入配对模式，程序内点击「一键连接手柄」
 4. 右上角切换 中文 / English；设置面板里开启你想要的模式
@@ -77,16 +77,28 @@
 
 ```bash
 cd _src
-pip install bleak pynput pyqt5
-python -m PyInstaller --noconfirm --clean --onefile --windowed --name WinJoyCon2-Plus --icon logo_256.ico --hidden-import theme --hidden-import i18n --hidden-import virtual --hidden-import virtual.bridge --hidden-import virtual.descriptors --hidden-import virtual.hid_function --hidden-import virtual.reports --hidden-import virtual.usbip --hidden-import virtual.vjoy_out --hidden-import virtual.imu_proc --hidden-import virtual.scroll --hidden-import virtual.rumble_hd --hidden-import virtual.jc2_frame --hidden-import device_cleanup --hidden-import hidden_exec --hidden-import control_type --hidden-import control_type.duo_joycon --hidden-import control_type.single_joycon --hidden-import control_type.mouse_mode --hidden-import controllers --hidden-import controllers.JoyconL --hidden-import controllers.JoyconR --hidden-import error_handler gui.py
+python -m PyInstaller --noconfirm --clean --onefile --windowed \
+  --name WinJoyCon2-Plus --icon logo_256.ico \
+  --hidden-import theme --hidden-import i18n \
+  --hidden-import virtual --hidden-import virtual.bridge \
+  --hidden-import virtual.descriptors --hidden-import virtual.hid_function \
+  --hidden-import virtual.reports --hidden-import virtual.usbip \
+  --hidden-import virtual.vjoy_out --hidden-import virtual.imu_proc \
+  --hidden-import virtual.scroll --hidden-import virtual.rumble_hd \
+  --hidden-import virtual.jc2_frame --hidden-import device_cleanup \
+  --hidden-import hidden_exec --hidden-import control_type \
+  --hidden-import control_type.duo_joycon --hidden-import control_type.single_joycon \
+  --hidden-import control_type.mouse_mode --hidden-import controllers \
+  --hidden-import controllers.JoyconL --hidden-import controllers.JoyconR \
+  --hidden-import error_handler gui.py
 ```
 
-需要 Windows 10/11 与 Python 3.10+。
+需要 Python 3.10+（`pip install bleak pynput pyqt5`）与 Windows 10/11。
 
 ## 致谢与声明
 
-- 摇杆标定参考 Alia5/VIIPER 的成熟实现
-- 协议研究参考 ndeadly/switch2_controller_research 与 SDL `SDL_hidapi_switch2`
+- 摇杆标定参考 [Alia5/VIIPER](https://github.com/Alia5/ViGEmBus) 的成熟实现
+- 协议研究参考 [ndeadly/switch2_controller_research](https://github.com/ndeadly/switch2_controller_research) 与 SDL `SDL_hidapi_switch2`
 - 本项目为独立逆向工程成果，与任天堂无关。Joy-Con、Nintendo Switch 为任天堂商标。
 
 **为所有想把 JC2 用到极致的人而造。**
@@ -127,10 +139,10 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 
 ### Install
 
-1. Install USB/IP
-2. Grab `WinJoyCon2-Plus.exe` from Releases (or build from source)
-3. Hold SYNC on the controllers, click "Connect Both"
-4. Switch language at top-right, enable your favorite mode
+1. Install [USB/IP](https://github.com/cezanne/usbip-win)
+2. Grab `WinJoyCon2-Plus.exe` from Releases (or build from source below)
+3. Hold SYNC on the controllers, click "Connect Both" in the app
+4. Switch language at top-right, enable your favorite mode in settings
 5. Enjoy — you'll never go back to a normal controller
 
 ### Build from source
@@ -138,11 +150,26 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 ```bash
 cd _src
 pip install bleak pynput pyqt5
-python -m PyInstaller --noconfirm --clean --onefile --windowed --name WinJoyCon2-Plus --icon logo_256.ico --hidden-import theme --hidden-import i18n --hidden-import virtual --hidden-import virtual.bridge --hidden-import virtual.descriptors --hidden-import virtual.hid_function --hidden-import virtual.reports --hidden-import virtual.usbip --hidden-import virtual.vjoy_out --hidden-import virtual.imu_proc --hidden-import virtual.scroll --hidden-import virtual.rumble_hd --hidden-import virtual.jc2_frame --hidden-import device_cleanup --hidden-import hidden_exec --hidden-import control_type --hidden-import control_type.duo_joycon --hidden-import control_type.single_joycon --hidden-import control_type.mouse_mode --hidden-import controllers --hidden-import controllers.JoyconL --hidden-import controllers.JoyconR --hidden-import error_handler gui.py
+python -m PyInstaller --noconfirm --clean --onefile --windowed \
+  --name WinJoyCon2-Plus --icon logo_256.ico \
+  --hidden-import theme --hidden-import i18n \
+  --hidden-import virtual --hidden-import virtual.bridge \
+  --hidden-import virtual.descriptors --hidden-import virtual.hid_function \
+  --hidden-import virtual.reports --hidden-import virtual.usbip \
+  --hidden-import virtual.vjoy_out --hidden-import virtual.imu_proc \
+  --hidden-import virtual.scroll --hidden-import virtual.rumble_hd \
+  --hidden-import virtual.jc2_frame --hidden-import device_cleanup \
+  --hidden-import hidden_exec --hidden-import control_type \
+  --hidden-import control_type.duo_joycon --hidden-import control_type.single_joycon \
+  --hidden-import control_type.mouse_mode --hidden-import controllers \
+  --hidden-import controllers.JoyconL --hidden-import controllers.JoyconR \
+  --hidden-import error_handler gui.py
 ```
+
+Requires Windows 10/11 and Python 3.10+.
 
 ### Credits
 
-Stick calibration inspired by Alia5/VIIPER; protocol research from ndeadly/switch2_controller_research and SDL `SDL_hidapi_switch2`. Independent reverse-engineering work, not affiliated with Nintendo. Joy-Con and Nintendo Switch are trademarks of Nintendo.
+Stick calibration inspired by [Alia5/VIIPER](https://github.com/Alia5/ViGEmBus); protocol research from [ndeadly/switch2_controller_research](https://github.com/ndeadly/switch2_controller_research) and SDL `SDL_hidapi_switch2`. Independent reverse-engineering work, not affiliated with Nintendo. Joy-Con and Nintendo Switch are trademarks of Nintendo.
 
 **Built for everyone who wants to push the JC2 to its absolute limit.**
