@@ -6,6 +6,8 @@
 
 **这不是又一个手柄映射器 —— 这是 Joy-Con 2 在 Windows 上的完全体。**
 
+**堂堂登场！请多指教。**
+
 [![Version](https://img.shields.io/badge/Version-1.1-brightgreen?style=for-the-badge)](./README.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
 [![Controller](https://img.shields.io/badge/Controller-Joy--Con%202-E6007D?style=for-the-badge)](https://www.nintendo.com/us/store/products/joy-con-2/)
@@ -36,7 +38,7 @@
 - Windows 原生滚轮一格跳三行、生硬顿挫 —— 我们用**亚格精度连续滚动 + 力度平方曲线**，做到了比真鼠标还丝滑、轻推慢滚满推快滚的模拟量手感。
 - NS2 陀螺仪只在个别游戏里当辅助 —— 我们做成了**银河式陀螺仪鼠标**，全系统通用，漂移了一键回中。
 
-**这是把游戏主机的硬件，做成了 PC 上真正通用的输入设备。**
+**这是把游戏主机的硬件，做成了 PC 上真正通用的输入设备。堂堂正道！走的就是这条路。**
 
 ## 1.1 版本新特性
 
@@ -51,7 +53,7 @@
 - **检测不到 USB/IP 时，直接提供「一键安装」按钮**，不必再翻文档、找路径。
 - **安装按钮常驻界面**：即使误删了 USB/IP，也能随时点一下重装，永不抓瞎。
 
-> 版本号：**1.1**。以上为本次更新的重点。
+> 版本号：**1.1**。这次更新，堂堂发布！
 
 ## 核心能力
 
@@ -93,7 +95,7 @@
 2. 下载 Release 中的 `WinJoyCon2-Plus.exe`（或按下方命令自行构建）
 3. **首次启动会弹出使用须知**；陌生手柄请先按提示**手动分开连接左 / 右**，程序会记住左右（KnownSides），此后即可「一键连接」
 4. 右上角切换 中文 / English；设置面板里开启你想要的模式
-5. 开始享受 —— 你会再也回不去普通手柄了
+5. 开始享受 —— 你会再也回不去普通手柄了。堂堂享用！
 
 ## 从源码构建
 
@@ -121,14 +123,14 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed \
 
 本项目站在以下先行者的工作之上，谨致谢意：
 
-- **Joy2Win** —— 本项目的前身与起点，原始的 Joy-Con 2 → 虚拟 Joy-Con 1（USB/IP）桥接实现来源于它
+- [Joy2Win](https://github.com/Logan-Gaillard/Joy2Win) —— 本项目的前身与起点，原始的 Joy-Con 2 → 虚拟 Joy-Con 1（USB/IP）桥接实现来源于它
 - [XinHeLianSheng-Pro2-Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge)（新合力胜 Pro2 Bridge，`source/final-three-in-one`）：参考了其内置的 usbip-win2 v0.9.7.7 USB/IP 安装包与运行时定位思路
 - [cezanne/usbip-win](https://github.com/cezanne/usbip-win)（usbip-win2）：提供 Windows 上的 USB/IP 驱动
 - [Alia5/VIIPER](https://github.com/Alia5/ViGEmBus)：摇杆标定方案的成熟实现
 - [ndeadly/switch2_controller_research](https://github.com/ndeadly/switch2_controller_research) 与 SDL `SDL_hidapi_switch2`：协议研究成果
 - 灵感来自任天堂的硬件工程，以及《超级马力欧银河》那套令人惊叹的陀螺仪交互
 
-**堂堂正正地开源！为所有想把 JC2 用到极致的人而造。**
+**堂堂开源！为所有想把 JC2 用到极致的人而造。**
 
 ### 免责与致敬声明
 
@@ -177,7 +179,7 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 - **If USB/IP is not detected, a one-click "Install" button is right there** — no more hunting through docs and paths.
 - **The install button stays available at all times**: even if USB/IP is accidentally removed, one click reinstalls it.
 
-> Version: **1.1**. The above are the highlights of this release.
+> Version: **1.1**. This update, grandly released!
 
 ### Core features
 
@@ -193,7 +195,7 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 2. Grab `WinJoyCon2-Plus.exe` from Releases (or build from source below)
 3. **A usage guide appears on first launch**; for an unfamiliar controller, **connect left/right manually** as prompted — the app remembers the sides (KnownSides), after which "Connect Both" works instantly
 4. Switch language at top-right, enable your favorite mode in settings
-5. Enjoy — you'll never go back to a normal controller
+5. Enjoy — you'll never go back to a normal controller. Use it grandly!
 
 ### Build from source
 
@@ -222,14 +224,14 @@ Requires Windows 10/11 and Python 3.10+.
 
 This project stands on the shoulders of the following prior work — with thanks:
 
-- **Joy2Win** — the predecessor and starting point of this project; the original Joy-Con 2 → virtual Joy-Con 1 (USB/IP) bridge originated there
+- [Joy2Win](https://github.com/Logan-Gaillard/Joy2Win) — the predecessor and starting point of this project; the original Joy-Con 2 → virtual Joy-Con 1 (USB/IP) bridge originated there
 - [XinHeLianSheng-Pro2-Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge) (`source/final-three-in-one`): we referenced its bundled usbip-win2 v0.9.7.7 USB/IP installer and its approach to locating the runtime.
 - [cezanne/usbip-win](https://github.com/cezanne/usbip-win) (usbip-win2): USB/IP driver for Windows.
 - [Alia5/VIIPER](https://github.com/Alia5/ViGEmBus): mature stick-calibration implementation.
 - [ndeadly/switch2_controller_research](https://github.com/ndeadly/switch2_controller_research) and SDL `SDL_hidapi_switch2`: protocol research.
 - Inspired by Nintendo's hardware engineering and the wonderful gyro interaction of Super Mario Galaxy.
 
-**Proudly open-sourced! Built for everyone who wants to push the JC2 to its absolute limit.**
+**Proudly open-sourced!** — with dignity and confidence. Built for everyone who wants to push the JC2 to its absolute limit.
 
 ### Disclaimer & Tribute
 
