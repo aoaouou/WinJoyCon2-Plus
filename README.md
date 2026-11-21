@@ -38,9 +38,9 @@
 - Windows 原生滚轮一格跳三行、生硬顿挫 —— 我们用**亚格精度连续滚动 + 力度平方曲线**，做到了比真鼠标还丝滑、轻推慢滚满推快滚的模拟量手感。
 - NS2 陀螺仪只在个别游戏里当辅助 —— 我们做成了**银河式陀螺仪鼠标**，全系统通用，漂移了一键回中。
 
-**这是把游戏主机的硬件，做成了 PC 上真正通用的输入设备。这条路，堂堂正道！走的就是它。**
+**这是把游戏主机的硬件，做成了 PC 上真正通用的输入设备。走的就是这条路。**
 
-## 1.1 版本新特性
+## v1.1，堂堂更新！
 
 ### 🔀 分开连接模式：陌生手柄也能认清左右
 - **陌生 Joy-Con 2 首次使用，必须手动选择左 / 右分开连接**：先连左手就认作左、先连右手就认作右，从源头杜绝左右混淆。
@@ -53,51 +53,54 @@
 - **检测不到 USB/IP 时，直接提供「一键安装」按钮**，不必再翻文档、找路径。
 - **安装按钮常驻界面**：即使误删了 USB/IP，也能随时点一下重装，永不抓瞎。
 
-> 版本号：**1.1**。v1.1，堂堂更新！
-
 ## 核心能力
 
 ### 🎮 忠实桥接
+
+**Joy-Con 2，堂堂桥接！** 一只 Joy-Con 2 进去，一只 Joy-Con 1 出来，模拟器毫无察觉。
+
 - 把 **Joy-Con 2（BLE）** 桥接为 **Switch 1 的 Joy-Con 1**（VID `057E` / PID `2006`·`2007`）
 - Ryujinx / Eden 等只认 JC1 的模拟器直接可用，识别为**左右分体**而非 Pro
 - 摇杆照 viiper 方案标定：center 2048 / 行程 2047 / 物理拉伸 900，回中精准、推满到边
 - HD 震动 2、IMU 六轴、全按键，逐字节保真
 - 一键并发连接双柄 + 断线重连 + 幽灵设备自动清理
 
-**Joy-Con 2，堂堂桥接！** 一只 Joy-Con 2 进去，一只 Joy-Con 1 出来，模拟器毫无察觉。
-
 ### 🖱 光学鼠标模式（超越 NS2 官方）
+
+**光学鼠标，堂堂切换！** 手柄一放平，它就成了一只能滚能点、推得越狠滚得越快的鼠标。
+
 - **双柄独立**：左右手柄各自是独立鼠标，系统原生叠加，可单独或同时开启
 - 光标走光学传感器原生通道，跟手无延迟
 - **力度滚轮**：推得越狠滚得越快，平方曲线低速细腻、高速畅快；亚格精度滚动，比 Windows 原生滚轮丝滑得多
 - **四挡 DPI**：800 / 1600 / 3200 / 6400，加键升挡、减键降挡（双手柄到顶停住，单手柄循环）
 - 全按键可自定义映射：左/右键、中键、前进/后退侧键、滚轮、光标回中
 
-**光学鼠标，堂堂切换！** 手柄一放平，它就成了一只能滚能点、推得越狠滚得越快的鼠标。
-
 ### 🌀 陀螺仪鼠标（把马力欧银河搬进 Windows）
+
+**银河手感，堂堂模拟！** 手腕一转，光标便走 —— 银河的手感搬进了 Windows 桌面。
+
 - **角速度积分式**光标控制 —— 超级马力欧银河 NS 版的体感逻辑，全系统通用
 - 绕竖直轴转动 = 水平移动，绕长轴俯仰 = 垂直移动，停手即停
 - 灵敏度、X/Y 反转独立可调，默认已按银河手感标定
 - **摇杆按下 = 光标一键回屏幕中心**，漂移即刻归位
 - 完美支持 FPS 精细瞄准、桌面浏览、任何需要指针的场景
 
-**银河手感，堂堂模拟！** 手腕一转，光标便走 —— 银河的手感搬进了 Windows 桌面。
-
 ### ⚙ 宏系统
+
+**宏指令，堂堂触发！** 一键按下，串好的动作便逐帧还原，无需再手忙脚乱。
+
 - C 键 + SL/SR 触发宏，四个侧键各绑一套
 - GUI 内录制 / 保存 / 开关，宏与按键配置全部持久化，重启不丢
 - 双手柄模式一键同步切换：手柄 / 鼠标 / 陀螺仪
 
-**宏指令，堂堂触发！** 一键按下，串好的动作便逐帧还原，无需再手忙脚乱。
-
 ### 🌐 体验细节
+
+**细节，堂堂打磨！** 每个按钮想怎么配就怎么配，配完立刻生效，重启也不丢。
+
 - **中英双语界面**，右上角一键切换
 - 最小化到托盘、托盘右键快速切模式、关闭即干净退出
 - 页面内跳转的设置面板、可滚动布局、内置使用说明
 - 所有自定义即时生效并落盘
-
-**按键映射，堂堂还原！** 每个按钮想怎么配就怎么配，配完立刻生效，重启也不丢。
 
 ## 安装与使用
 
@@ -180,9 +183,9 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 - Windows native scroll jumps 3 lines per notch, stiff and jarring. We built **sub-notch continuous scrolling with a squared force curve** — smoother than a real mouse, slow when you nudge, fast when you push.
 - NS2 limits gyro to a few games. We built a **Galaxy-style gyro mouse** — system-wide, with one-click re-centering when it drifts.
 
-**This turns console hardware into a truly universal PC input device. Joy-Con 2, grandly bridging!**
+**This turns console hardware into a truly universal PC input device. This path, grandly chosen!**
 
-### What's New in 1.1
+### v1.1, grandly updated!
 
 #### 🔀 Separate connection mode: even unfamiliar controllers know left from right
 - **An unfamiliar Joy-Con 2 must be connected manually as left or right on first use**: whichever you pair first is registered as that side, eliminating left/right confusion at the source.
@@ -195,23 +198,54 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 - **If USB/IP is not detected, a one-click "Install" button is right there** — no more hunting through docs and paths.
 - **The install button stays available at all times**: even if USB/IP is accidentally removed, one click reinstalls it.
 
-> Version: **1.1**. v1.1, grandly updated!
-
 ### Core features
 
-- 🎮 **Faithful bridging**: Joy-Con 2 (BLE) → virtual Joy-Con 1 (`057E`/`2006`·`2007`), works in Ryujinx/Eden, split L/R, viiper stick calibration, HD rumble + IMU + all buttons.
-- 🖱 **Optical mouse mode (beyond NS2)**: two independent mice, optical sensor cursor, **force-based scroll** with sub-notch smoothness, **4 DPI levels** (800/1600/3200/6400) via Plus/Minus, fully remappable buttons.
+#### 🎮 Faithful bridging
+
+**Joy-Con 2, grandly bridging!** A Joy-Con 2 goes in, a Joy-Con 1 comes out — the emulator never notices.
+
+- Joy-Con 2 (BLE) → virtual Joy-Con 1 (`057E` / `2006`·`2007`)
+- Works in Ryujinx/Eden as **split left/right**, not a Pro controller
+- viiper stick calibration: center 2048 / travel 2047 / physical stretch 900
+- HD Rumble 2, 6-axis IMU, all buttons — byte-for-byte faithful
+- Concurrent dual connect + auto-reconnect + ghost device cleanup
+
+#### 🖱 Optical mouse mode (beyond NS2)
 
 **Optical mouse, grandly switching!** Lay it flat and it becomes a mouse that clicks, scrolls, and scrolls faster the harder you push.
-- 🌀 **Gyro mouse (Super Mario Galaxy on Windows)**: angular-velocity cursor control, system-wide, tunable sensitivity + axis inversion, **stick-press re-centers cursor**.
+
+- **Two independent mice**: each Joy-Con is its own mouse, natively composited by the OS
+- Cursor driven by the optical sensor's native channel — zero added latency
+- **Force-based scroll**: squared curve, fine at low speed, fast when pushed; sub-notch smoothness
+- **4 DPI levels**: 800 / 1600 / 3200 / 6400 via Plus/Minus
+- Fully remappable: left/right/middle, forward/back side keys, scroll, cursor-centering
+
+#### 🌀 Gyro mouse (Super Mario Galaxy on Windows)
 
 **Galaxy feel, grandly simulating!** A turn of the wrist moves the cursor — Galaxy's feel, brought to the Windows desktop.
-- ⚙ **Macro system**: C+SL/SR triggers, four bindable side keys, record/save in GUI, persistent config.
-- 🌐 **Polish**: **bilingual UI (Chinese/English)**, tray minimize + quick mode switch, scrollable in-page settings, built-in help.
+
+- **Angular-velocity** cursor control — Galaxy-style motion logic, system-wide
+- Rotate about the vertical axis = horizontal; pitch about the long axis = vertical; stops when you stop
+- Sensitivity and X/Y inversion independently tunable, pre-calibrated to the Galaxy feel
+- **Stick press = cursor back to screen center**, instantly
+- Perfect for FPS aiming, desktop browsing, anything needing a pointer
+
+#### ⚙ Macro system
 
 **Macros, grandly triggering!** One key press replays the whole recorded sequence, frame by frame.
 
-**Key mapping, grandly restoring!** Every button maps the way you want it, effective instantly, persistent across restarts.
+- C + SL/SR triggers, one macro per side key (four total)
+- Record / save / toggle in the GUI; macros and mappings all persisted
+- Sync all controllers to one mode: gamepad / mouse / gyro
+
+#### 🌐 Polish
+
+**Details, grandly polished!** Every button maps the way you want it, effective instantly, persistent across restarts.
+
+- **Bilingual UI** (Chinese/English), switch at top-right
+- Minimize to tray, tray menu for quick mode switch, clean exit on close
+- In-page settings, scrollable layout, built-in help
+- All customizations applied instantly and written to disk
 
 ### Install
 
