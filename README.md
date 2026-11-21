@@ -6,7 +6,7 @@
 
 **这不是又一个手柄映射器 —— 这是 Joy-Con 2 在 Windows 上的完全体。**
 
-**堂堂登场！请多指教。**
+**堂堂登场！**
 
 [![Version](https://img.shields.io/badge/Version-1.1-brightgreen?style=for-the-badge)](./README.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
@@ -64,12 +64,16 @@
 - HD 震动 2、IMU 六轴、全按键，逐字节保真
 - 一键并发连接双柄 + 断线重连 + 幽灵设备自动清理
 
+**堂堂桥接！** 一只 Joy-Con 2 进去，一只 Joy-Con 1 出来，模拟器毫无察觉。
+
 ### 🖱 光学鼠标模式（超越 NS2 官方）
 - **双柄独立**：左右手柄各自是独立鼠标，系统原生叠加，可单独或同时开启
 - 光标走光学传感器原生通道，跟手无延迟
 - **力度滚轮**：推得越狠滚得越快，平方曲线低速细腻、高速畅快；亚格精度滚动，比 Windows 原生滚轮丝滑得多
 - **四挡 DPI**：800 / 1600 / 3200 / 6400，加键升挡、减键降挡（双手柄到顶停住，单手柄循环）
 - 全按键可自定义映射：左/右键、中键、前进/后退侧键、滚轮、光标回中
+
+**堂堂切换！** 手柄一放平，它就成了一只能滚能点、推得越狠滚得越快的鼠标。
 
 ### 🌀 陀螺仪鼠标（把马力欧银河搬进 Windows）
 - **角速度积分式**光标控制 —— 超级马力欧银河 NS 版的体感逻辑，全系统通用
@@ -78,10 +82,14 @@
 - **摇杆按下 = 光标一键回屏幕中心**，漂移即刻归位
 - 完美支持 FPS 精细瞄准、桌面浏览、任何需要指针的场景
 
+**堂堂模拟！** 手腕一转，光标便走 —— 银河的手感搬进了 Windows 桌面。
+
 ### ⚙ 宏系统
 - C 键 + SL/SR 触发宏，四个侧键各绑一套
 - GUI 内录制 / 保存 / 开关，宏与按键配置全部持久化，重启不丢
 - 双手柄模式一键同步切换：手柄 / 鼠标 / 陀螺仪
+
+**堂堂触发！** 一键按下，串好的动作便逐帧还原，无需再手忙脚乱。
 
 ### 🌐 体验细节
 - **中英双语界面**，右上角一键切换
@@ -89,13 +97,15 @@
 - 页面内跳转的设置面板、可滚动布局、内置使用说明
 - 所有自定义即时生效并落盘
 
+**堂堂还原！** 每个按钮想怎么配就怎么配，配完立刻生效，重启也不丢。
+
 ## 安装与使用
 
-1. 安装 [USB/IP](https://github.com/cezanne/usbip-win)（本机路径 `C:\Program Files\USBip\usbip.exe`）；**1.1 起若未检测到，程序内可一键安装**
+1. 安装 [USB/IP](https://github.com/cezanne/usbip-win)（本机路径 `C:\Program Files\USBip\usbip.exe`）；**1.1 起若未检测到，程序内可一键安装** —— **堂堂安装！**
 2. 下载 Release 中的 `WinJoyCon2-Plus.exe`（或按下方命令自行构建）
-3. **首次启动会弹出使用须知**；陌生手柄请先按提示**手动分开连接左 / 右**，程序会记住左右（KnownSides），此后即可「一键连接」
+3. **首次启动会弹出使用须知**；陌生手柄请先按提示**手动分开连接左 / 右**，程序会记住左右（KnownSides），此后即可「一键连接」—— **堂堂连接！**
 4. 右上角切换 中文 / English；设置面板里开启你想要的模式
-5. 开始享受 —— 你会再也回不去普通手柄了。堂堂享用！
+5. 开始享受 —— 你会再也回不去普通手柄了。**堂堂享用！**
 
 ## 从源码构建
 
@@ -119,18 +129,22 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed \
 
 需要 Python 3.10+（`pip install bleak pynput pyqt5`）与 Windows 10/11。
 
+**堂堂构建！** 一条命令，一个 exe，绿色便携，双击即用。
+
 ## 致谢
 
 本项目站在以下先行者的工作之上，谨致谢意：
 
 - [Joy2Win](https://github.com/Logan-Gaillard/Joy2Win) —— 本项目的前身与起点：**GUI 的地基**与**连接手柄的实现**均来自它
-- [新和联胜 Pro2 Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge)（`source/final-three-in-one`）：在**各个方面**都为本项目提供了宝贵参考，包括内置 usbip-win2 v0.9.7.7 的 USB/IP 安装包与运行时定位思路
+- [XinHeLianSheng-Pro2-Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge)（`source/final-three-in-one`）：在**各个方面**都为本项目提供了宝贵参考，包括内置 usbip-win2 v0.9.7.7 的 USB/IP 安装包与运行时定位思路
 - [cezanne/usbip-win](https://github.com/cezanne/usbip-win)（usbip-win2）：提供 Windows 上的 USB/IP 驱动
 - [Alia5/VIIPER](https://github.com/Alia5/ViGEmBus)：摇杆标定方案的成熟实现
 - [ndeadly/switch2_controller_research](https://github.com/ndeadly/switch2_controller_research) 与 SDL `SDL_hidapi_switch2`：协议研究成果
 - 灵感来自任天堂的硬件工程，以及《超级马力欧银河》那套令人惊叹的陀螺仪交互
 
-**堂堂开源！为所有想把 JC2 用到极致的人而造。**
+**堂堂致谢！** 没有这些先行者，就没有今天这个项目。
+
+**堂堂开源！** 为所有想把 JC2 用到极致的人而造。
 
 ### 免责与致敬声明
 
@@ -150,6 +164,8 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed \
 
 **This is not another gamepad mapper — it is the complete form of the Joy-Con 2 on Windows.**
 
+**Grandly arriving!**
+
 > **English** · [中文](#why-it-is-different)
 
 ### Why it is different?
@@ -164,7 +180,7 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 - Windows native scroll jumps 3 lines per notch, stiff and jarring. We built **sub-notch continuous scrolling with a squared force curve** — smoother than a real mouse, slow when you nudge, fast when you push.
 - NS2 limits gyro to a few games. We built a **Galaxy-style gyro mouse** — system-wide, with one-click re-centering when it drifts.
 
-**This turns console hardware into a truly universal PC input device.**
+**This turns console hardware into a truly universal PC input device. Grandly bridging!**
 
 ### What's New in 1.1
 
@@ -185,17 +201,25 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 
 - 🎮 **Faithful bridging**: Joy-Con 2 (BLE) → virtual Joy-Con 1 (`057E`/`2006`·`2007`), works in Ryujinx/Eden, split L/R, viiper stick calibration, HD rumble + IMU + all buttons.
 - 🖱 **Optical mouse mode (beyond NS2)**: two independent mice, optical sensor cursor, **force-based scroll** with sub-notch smoothness, **4 DPI levels** (800/1600/3200/6400) via Plus/Minus, fully remappable buttons.
+
+**Grandly switching!** Lay it flat and it becomes a mouse that clicks, scrolls, and scrolls faster the harder you push.
 - 🌀 **Gyro mouse (Super Mario Galaxy on Windows)**: angular-velocity cursor control, system-wide, tunable sensitivity + axis inversion, **stick-press re-centers cursor**.
+
+**Grandly simulating!** A turn of the wrist moves the cursor — Galaxy's feel, brought to the Windows desktop.
 - ⚙ **Macro system**: C+SL/SR triggers, four bindable side keys, record/save in GUI, persistent config.
 - 🌐 **Polish**: **bilingual UI (Chinese/English)**, tray minimize + quick mode switch, scrollable in-page settings, built-in help.
 
+**Grandly triggering!** One key press replays the whole recorded sequence, frame by frame.
+
+**Grandly restoring!** Every button maps the way you want it, effective instantly, persistent across restarts.
+
 ### Install
 
-1. Install [USB/IP](https://github.com/cezanne/usbip-win) — **as of 1.1, the app offers a one-click install if it is not detected**
+1. Install [USB/IP](https://github.com/cezanne/usbip-win) — **as of 1.1, the app offers a one-click install if it is not detected** — **Grandly installing!**
 2. Grab `WinJoyCon2-Plus.exe` from Releases (or build from source below)
-3. **A usage guide appears on first launch**; for an unfamiliar controller, **connect left/right manually** as prompted — the app remembers the sides (KnownSides), after which "Connect Both" works instantly
+3. **A usage guide appears on first launch**; for an unfamiliar controller, **connect left/right manually** as prompted — the app remembers the sides (KnownSides), after which "Connect Both" works instantly — **Grandly connecting!**
 4. Switch language at top-right, enable your favorite mode in settings
-5. Enjoy — you'll never go back to a normal controller. Use it grandly!
+5. Enjoy — you'll never go back to a normal controller. **Grandly enjoying!**
 
 ### Build from source
 
@@ -220,16 +244,20 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed \
 
 Requires Windows 10/11 and Python 3.10+.
 
+**Grandly building!** One command, one exe, portable and ready to double-click.
+
 ### Credits
 
 This project stands on the shoulders of the following prior work — with thanks:
 
 - [Joy2Win](https://github.com/Logan-Gaillard/Joy2Win) — the predecessor and starting point of this project: both the **foundation of the GUI** and the **controller connection implementation** come from it
-- [新和联胜 Pro2 Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge) (`source/final-three-in-one`): provided valuable reference across **every aspect** of this project, including its bundled usbip-win2 v0.9.7.7 USB/IP installer and its approach to locating the runtime.
+- [XinHeLianSheng-Pro2-Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge) (`source/final-three-in-one`): provided valuable reference across **every aspect** of this project, including its bundled usbip-win2 v0.9.7.7 USB/IP installer and its approach to locating the runtime.
 - [cezanne/usbip-win](https://github.com/cezanne/usbip-win) (usbip-win2): USB/IP driver for Windows.
 - [Alia5/VIIPER](https://github.com/Alia5/ViGEmBus): mature stick-calibration implementation.
 - [ndeadly/switch2_controller_research](https://github.com/ndeadly/switch2_controller_research) and SDL `SDL_hidapi_switch2`: protocol research.
 - Inspired by Nintendo's hardware engineering and the wonderful gyro interaction of Super Mario Galaxy.
+
+**Grandly thanking!** Without these pioneers, this project would not exist today.
 
 **Proudly open-sourced!** — with dignity and confidence. Built for everyone who wants to push the JC2 to its absolute limit.
 
