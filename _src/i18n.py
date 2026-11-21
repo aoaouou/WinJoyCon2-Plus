@@ -123,6 +123,28 @@ T = {
         "Device found, side unknown",
     "未找到设备，请重新长按同步按钮": "No device found, hold SYNC again",
     "扫描出错：{e}": "Scan error: {e}",
+    # ── 1.1 分开连接 / USB-IP ──
+    "🔀 分开连接": "🔀 Connect Separately",
+    "一键连接（左右已记忆）": "Connect Both (sides remembered)",
+    "首次使用请点「分开连接」分别选左右": "First use: click Connect Separately to pick Left/Right",
+    "手动选择左手柄或右手柄，连接后记住左右": "Pick Left or Right; the side is remembered after connecting",
+    "分开连接 - 手柄组 {n}": "Connect Separately - Pair {n}",
+    "分开连接：请选择这只手柄是左手柄还是右手柄，连接后会被记住。":
+        "Separate connection: pick whether this controller is Left or Right; it will be remembered.",
+    "分开连接 {s}手柄：{m}": "Connecting {s} controller: {m}",
+    "左": "Left", "右": "Right",
+    "🔧 一键安装 USB/IP": "🔧 Install USB/IP",
+    "🔧 重装/修复 USB/IP": "🔧 Reinstall/Repair USB/IP",
+    "🧹 重置左右记忆": "🧹 Reset Side Memory",
+    "已清空左右记忆，下次请重新分开连接。重启程序使首次须知再次出现。":
+        "Side memory cleared. Please connect Left/Right separately again. "
+        "Restart to see the first-run notice again.",
+    "重置会清除已记住的左右手柄，确定吗？":
+        "Reset will clear remembered controller sides. Continue?",
+    "⚙ 输入模式设置": "⚙ Input Settings",
+    "输入模式设置": "Input Mode Settings",
+    "已连接{s1}手柄。请唤醒{s2}手柄并长按 SYNC，然后选侧连接。":
+        "{s1} controller connected. Wake the {s2} controller, hold SYNC, then connect.",
     "{n}/4 组手柄": "{n}/4 Pairs",
     "鼠标": "Mouse",
 

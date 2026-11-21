@@ -38,7 +38,18 @@ def config_path() -> str:
     所有读写配置的代码都必须走这里，不要各自拼 "config.ini"。
     曾经因为配置移到 config/ 子目录但部分代码仍读根目录 config.ini，
     导致 [KnownSides] 读不到 -> 左右手柄随机分配、按键失灵。
+
+    源码运行时（非 frozen）程序目录是 _src/，但真实配置在上一级的 config/，
+    所以此处在源码模式下优先用「已存在的那个」，避免调试与打包行为不一致。
     """
-    return os.path.join(app_dir(), "config", "config.ini")
+    primary = os.path.join(app_dir(), "config", "config.ini")
+    if getattr(sys, "frozen", False) or os.path.exists(primary):
+        return primary
+    # 源码调试：回退到 repo 根的 config/
+    parent = os.path.dirname(app_dir())
+    alt = os.path.join(parent, "config", "config.ini")
+    if os.path.exists(alt):
+        return alt
+    return primary
 
 

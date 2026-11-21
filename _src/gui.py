@@ -10,7 +10,7 @@ import asyncio
 
 # ── 应用标识（1.0 正式版）─────────────────────────────────
 APP_NAME = "WinJoyCon2-Plus"
-APP_VERSION = "1.0"
+APP_VERSION = "1.1"
 APP_TITLE = f"{APP_NAME} v{APP_VERSION} · Joy-Con 2 → Joy-Con 1"
 
 from PyQt5.QtWidgets import (
@@ -19,9 +19,9 @@ from PyQt5.QtWidgets import (
     QLabel, QPushButton, QTextEdit, QGroupBox, QCheckBox,
     QProgressBar, QFrame, QSplitter, QMessageBox, QSystemTrayIcon, QMenu,
     QComboBox, QFormLayout, QDialog, QGridLayout, QListWidget, QListWidgetItem,
-    QScrollArea, QTabWidget, QDoubleSpinBox, QLineEdit, QStackedWidget
+    QScrollArea, QTabWidget, QDoubleSpinBox, QLineEdit, QStackedWidget, QSizePolicy
 )
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QMetaObject, QPoint, Q_ARG, QEvent
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QMetaObject, QPoint, Q_ARG, QEvent, QObject
 from PyQt5.QtGui import (QFont, QIcon, QPixmap, QPainter, QColor, QBrush,
                          QPolygon, QPen, QPalette)
 
@@ -48,6 +48,22 @@ def fix_combo_popup(combo):
     QStyledItemDelegate 子类在 PyQt5 上会破坏内部信号连接导致段错误。
     """
     theme.style_combo_popup(combo)
+
+
+class _NoWheelComboFilter(QObject):
+    """事件过滤器：让 QComboBox / QSpinBox 上的滚轮不改值，而是透传给父 QScrollArea 滚动页面。
+    用户想滚页面，却因为鼠标停在下拉框上变成改选项——这个过滤器解决它。"""
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Wheel and isinstance(obj, (QComboBox, QDoubleSpinBox)):
+            # 找到最近的 QScrollArea，把滚轮事件转给它
+            p = obj.parent()
+            while p is not None:
+                if isinstance(p, QScrollArea):
+                    QApplication.sendEvent(p, event)
+                    return True
+                p = p.parent()
+            return True   # 找不到滚动区也吞掉，至少不改选项
+        return False
 
 
 class _HelpDialog(QDialog):
@@ -102,29 +118,40 @@ class InputSettingsWidget(QWidget):
         self.pair_id = pair_id
         import control_type.mouse_mode as mm
         self.mm = mm
+        # 本控件只提供「鼠标/陀螺仪/宏」三个页面，由外层 ControllerPairTab 的
+        # QStackedWidget 统一切换（页0=主界面，页1/2/3=这三个）。
         self.stack = QStackedWidget()
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(self.stack)
-        # 页0：入口（三个按钮）；页1/2/3：鼠标/陀螺仪/宏
-        self.stack.addWidget(self._entry_page())
         self.stack.addWidget(self._wrap_scroll(self._mouse_page()))
         self.stack.addWidget(self._wrap_scroll(self._gyro_page()))
         self.stack.addWidget(self._wrap_scroll(self._macro_page()))
-        self._refresh()   # 初次同步显示
+        self._wheel_filter = _NoWheelComboFilter(self)
+        for w in self.findChildren((QComboBox, QDoubleSpinBox)):
+            w.installEventFilter(self._wheel_filter)
+        self._refresh()
 
     def _wrap_scroll(self, widget):
+        from PyQt5.QtWidgets import QSizePolicy
         sa = QScrollArea()
         sa.setWidgetResizable(True)
         sa.setWidget(widget)
-        sa.setMinimumHeight(320)
+        sa.setMinimumHeight(360)
+        sa.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # 滚动条留边，避免遮挡右侧内容
+        sa.setStyleSheet(
+            "QScrollArea { border: none; }"
+            "QScrollBar:vertical { width: 14px; margin: 0; background:#fff5fa; }"
+            "QScrollBar::handle:vertical { background:#ffb8d8; border-radius:7px; min-height:24px; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height:0; }")
         return sa
 
     def _nav_bar(self, title, help_key):
-        """每页顶部：返回 + 标题 + 使用说明。"""
+        """每页顶部：返回 + 标题 + 使用说明。返回由外层 ControllerPairTab 回主页。"""
         row = QHBoxLayout()
         back = QPushButton(tr("← 返回"))
-        back.clicked.connect(lambda: (self.stack.setCurrentIndex(0), self._refresh()))
+        back.clicked.connect(self._back_to_home)
         row.addWidget(back)
         lbl = QLabel(title)
         lbl.setStyleSheet("color:#ff6fae; font-size:15px; font-weight:bold;")
@@ -138,22 +165,14 @@ class InputSettingsWidget(QWidget):
         w.setLayout(row)
         return w
 
-    def _entry_page(self):
-        w = QWidget()
-        lay = QVBoxLayout(w)
-        lay.addWidget(QLabel(tr("输入模式设置（点击选择，页面内跳转）：")))
-        for text, idx in ((tr("🖱 鼠标模式"), 1), (tr("🌀 陀螺仪鼠标"), 2), (tr("⚙ 宏系统"), 3)):
-            b = QPushButton(text)
-            b.setStyleSheet("background:#f7c5db; color:#5c2340; border:1px solid #f3a8c9;"
-                            " border-radius:6px; padding:8px; text-align:left;")
-            b.clicked.connect(lambda _, i=idx: self._goto(i))
-            lay.addWidget(b)
-        lay.addStretch()
-        return w
-
-    def _goto(self, idx):
-        self._refresh()
-        self.stack.setCurrentIndex(idx)
+    def _back_to_home(self):
+        """通知外层 ControllerPairTab 切回主页面（页0）。"""
+        p = self.parent()
+        while p is not None:
+            if hasattr(p, "show_home_page"):
+                p.show_home_page()
+                return
+            p = p.parent()
 
     # ── 鼠标页 ───────────────────────────────────────────────────────────
     def _mouse_page(self):
@@ -334,12 +353,19 @@ class ControllerPairTab(QWidget):
         self.init_ui()
     
     def init_ui(self):
-        layout = QVBoxLayout()
+        """页0 = 主页面（连接状态+按钮+日志）；页1/2/3 = 鼠标/陀螺仪/宏设置。"""
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        # ══════════ 页 0：主页面 ══════════
+        home = QWidget()
+        layout = QVBoxLayout(home)
         layout.setSpacing(10)
         layout.setContentsMargins(12, 12, 12, 12)
-        
+
         # Connection status group
         status_group = QGroupBox(tr("连接状态"))
+        self._status_group = status_group
         status_layout = QVBoxLayout()
         
         # Mode display
@@ -410,9 +436,9 @@ class ControllerPairTab(QWidget):
         # 连接模式/输入模式开关/震动开关均已移除（项目简化）：
         # 始终双手柄连接、震动默认开启、输入模式设置面板常驻显示。
 
-        # 输入模式三页面板（鼠标 / 陀螺仪鼠标 / 宏）常驻显示，直接点按钮跳转
+        # 设置控件容器（三个页面），稍后加入 pages 作为页1/2/3
         self.input_panel = InputSettingsWidget(self.pair_id, self)
-        layout.addWidget(self.input_panel)
+        self.input_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
         # Control buttons for this pair
         btn_layout = QHBoxLayout()
@@ -460,14 +486,51 @@ class ControllerPairTab(QWidget):
         """)
         self.calib_btn.clicked.connect(self.on_calibrate_gyro)
 
-        btn_layout.addWidget(self.add_btn)
-        btn_layout.addWidget(self.calib_btn)
-        btn_layout.addWidget(self.disconnect_btn)
-        btn_layout.addStretch()
-        layout.addLayout(btn_layout)
+        # 1.1 分开连接：陌生手柄必须手动选左/右，连上后记住
+        self.add_separate_btn = QPushButton(tr("🔀 分开连接"))
+        # 三个模式入口：分别直达页1/2/3
+        self.mouse_page_btn = QPushButton(tr("🖱 鼠标模式"))
+        self.gyro_page_btn = QPushButton(tr("🌀 陀螺仪鼠标"))
+        self.macro_page_btn = QPushButton(tr("⚙ 宏系统"))
+        for b, idx in ((self.mouse_page_btn, 1), (self.gyro_page_btn, 2), (self.macro_page_btn, 3)):
+            b.setStyleSheet(
+                "QPushButton { background:#f7c5db; color:#5c2340; border:1px solid #f3a8c9;"
+                " border-radius:5px; padding:10px; }"
+                "QPushButton:hover { background:#ffd9e9; }")
+            b.clicked.connect(lambda _, i=idx: self.show_page(i))
+        self.settings_btn = self.mouse_page_btn   # 兼容旧引用
+        self.add_separate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #ffd9e9; color: #5c2340;
+                border: 1px solid #f3a8c9; border-radius: 5px; padding: 10px;
+            }
+            QPushButton:hover { background-color: #ffb8d8; }
+        """)
+        # 按钮分三行：连接 / 模式入口 / 其它，避免挤在一行
+        row1 = QHBoxLayout()
+        row1.addWidget(self.add_btn)
+        row1.addWidget(self.add_separate_btn)
+        row2 = QHBoxLayout()
+        row2.addWidget(self.mouse_page_btn)
+        row2.addWidget(self.gyro_page_btn)
+        row2.addWidget(self.macro_page_btn)
+        row3 = QHBoxLayout()
+        row3.addWidget(self.calib_btn)
+        row3.addWidget(self.disconnect_btn)
+        btns = QWidget()
+        bl = QVBoxLayout(btns)
+        bl.setContentsMargins(0, 0, 0, 0)
+        bl.setSpacing(6)
+        bl.addLayout(row1)
+        bl.addLayout(row2)
+        bl.addLayout(row3)
+        self._btn_bar = btns
+        layout.addWidget(btns)
+        self._refresh_connect_mode()
         
         # Log output for this pair
         log_group = QGroupBox(tr("手柄组日志"))
+        self._log_group = log_group
         log_layout = QVBoxLayout()
         
         self.log_output = QTextEdit()
@@ -483,22 +546,48 @@ class ControllerPairTab(QWidget):
                 font-size: 13px;
             }
         """)
-        self.log_output.setFixedHeight(120)
+        # 日志区吃掉剩余全部高度，不再固定 90px 留空白
+        self.log_output = QTextEdit()
+        self.log_output.setReadOnly(True)
+        self.log_output.document().setMaximumBlockCount(200)
+        self.log_output.setStyleSheet("""
+            QTextEdit {
+                background-color: #fffafd;
+                color: #5c2340;
+                border: 1px solid #f3a8c9;
+                border-radius: 6px;
+                font-family: Consolas, monospace;
+                font-size: 13px;
+            }
+        """)
+        self.log_output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         log_layout.addWidget(self.log_output)
         log_group.setLayout(log_layout)
-        layout.addWidget(log_group)
+        layout.addWidget(log_group, 1)   # stretch=1：日志填满剩余空间
 
-        # 整个 tab 内容放进滚动区：展开输入设置面板后即使超出窗口高度也能滚动看到
-        container = QWidget()
-        container.setLayout(layout)
-        self._outer_scroll = QScrollArea(self)
-        self._outer_scroll.setWidgetResizable(True)
-        self._outer_scroll.setWidget(container)
-        self._outer_scroll.setFrameShape(QFrame.NoFrame)
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(self._outer_scroll)
+        # ══════════ 组装：复用 input_panel.stack 作为 4 页容器 ══════════
+        # 不再另建 pages + reparent（那会触发 C++ 层崩溃），直接把主页面
+        # insert 到 input_panel.stack 的最前面：0=主页面 1=鼠标 2=陀螺仪 3=宏
+        self.pages = self.input_panel.stack
+        self.pages.insertWidget(0, home)
+        # input_panel 外层 layout 只用来承载 stack，直接把整个 input_panel 放进 outer
+        outer.addWidget(self.input_panel)
         self.setLayout(outer)
+        self.pages.setCurrentIndex(0)   # 默认显示主页面
+
+    def show_page(self, idx: int):
+        """切换到指定页（0=主页面，1=鼠标，2=陀螺仪，3=宏）。"""
+        if 0 <= idx < self.pages.count():
+            self.pages.setCurrentIndex(idx)
+            if idx > 0 and hasattr(self, "input_panel"):
+                self.input_panel._refresh()
+
+    def show_home_page(self):
+        self.show_page(0)
+
+    def set_focus_mode(self, focused: bool):
+        """兼容旧调用：True=进设置页，False=回主页。"""
+        self.show_page(1 if focused else 0)
     
     @staticmethod
     def _set_battery_display(progress_bar, battery_level, connected, is_charging=False):
@@ -584,6 +673,33 @@ class ControllerPairTab(QWidget):
             self.input_panel._refresh()
 
 
+    def set_focus_mode(self, focused: bool):
+        """专注模式：设置面板独占整个 tab（隐藏连接状态/按钮/日志）。"""
+        for attr in ("_status_group", "_btn_bar", "_log_group"):
+            w = getattr(self, attr, None)
+            if w is not None:
+                w.setVisible(not focused)
+        if hasattr(self, "input_panel") and self.input_panel is not None:
+            self.input_panel.setVisible(focused)
+            self.input_panel.setMinimumHeight(0 if focused else 360)
+
+    def _refresh_connect_mode(self):
+        """1.1：左右未认清时禁用一键连接，强制走分开连接。"""
+        try:
+            import usbip_setup
+            calibrated = usbip_setup.sides_calibrated()
+        except Exception:
+            calibrated = True   # 模块异常时不阻挡用户
+        self.add_btn.setEnabled(bool(calibrated))
+        if hasattr(self, "add_separate_btn"):
+            # 分开连接永远可用：随时可纠正选错的左右，不限首次
+            self.add_separate_btn.setEnabled(True)
+            tip = (tr("一键连接（左右已记忆）") if calibrated else
+                   tr("左右未记忆，请先分开连接"))
+            self.add_btn.setToolTip(tip)
+            self.add_separate_btn.setToolTip(
+                tr("随时手动选左/右（可纠正之前选错的），连接后记住"))
+
     def on_calibrate_gyro(self):
         """摇杆说明（沿用旧槽名）。
 
@@ -620,6 +736,10 @@ class ScanThread(QThread):
     scan_finished = pyqtSignal(list)
     scan_error = pyqtSignal(str)
 
+    def __init__(self, include_connected=False):
+        super().__init__()
+        self.include_connected = include_connected
+
     def run(self):
         """Run the scan"""
         try:
@@ -627,9 +747,10 @@ class ScanThread(QThread):
             # Run async scan in new event loop
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            
-            # Scan for first device (original Joy2Win style)
-            device = loop.run_until_complete(main.scan_for_joycons())
+
+            # Scan for first device（分开连接时允许扫已连接手柄）
+            device = loop.run_until_complete(
+                main.scan_for_joycons(include_connected=self.include_connected))
             loop.close()
             
             # Convert to list format for compatibility
@@ -1069,7 +1190,7 @@ class AddControllerDialog(QDialog):
         self.status_label.setStyleSheet("color: #c4407c;")
         
         # Run scan in background using QThread
-        self.scan_thread = ScanThread()
+        self.scan_thread = ScanThread(include_connected=getattr(self, "force_side_select", False))
         self.scan_thread.scan_finished.connect(self.on_scan_finished)
         self.scan_thread.scan_error.connect(self.on_scan_error)
         self.scan_thread.start()
@@ -1085,11 +1206,17 @@ class AddControllerDialog(QDialog):
             side = device.get('side', 'Unknown')
             device_name = device.get('name', 'Unknown')
             
-            if side != 'Unknown':
+            if side != 'Unknown' and not getattr(self, "force_side_select", False):
                 # Auto-detected side
                 self.status_label.setText(f"找到：{device_name} ({side})")
                 self.status_label.setStyleSheet("color: #ff6fae;")
                 self.side_widget.setVisible(False)
+            elif side != 'Unknown' and getattr(self, "force_side_select", False):
+                # 分开连接模式：即使识别出侧也让用户确认
+                self.status_label.setText(f"找到：{device_name} ({side}) — 请确认左右")
+                self.status_label.setStyleSheet("color: #ff6fae;")
+                self.side_combo.setCurrentIndex(0 if side == "Left" else 1)
+                self.side_widget.setVisible(True)
             else:
                 # Could not detect side - show selection
                 self.status_label.setText(tr("找到设备，但无法识别左右"))
@@ -1143,7 +1270,26 @@ class AddControllerDialog(QDialog):
                 device['pair_id'] = self.pair_id
 
             self.device_selected.emit(device)
-            self.accept()
+
+            # 分开连接流程：连上第一只后**不关闭窗口**，就地等第二只
+            if getattr(self, "force_side_select", False):
+                # 直接回调主窗口发起连接（不靠 exec_ 返回值）
+                if hasattr(self, "on_device") and callable(self.on_device):
+                    self.on_device(device)
+                other = "Right" if device.get("side") == "Left" else "Left"
+                self.status_label.setText(
+                    tr("已连接{s1}手柄。请唤醒{s2}手柄并长按 SYNC，然后选侧连接。",
+                       s1=tr("左") if device.get("side") == "Left" else tr("右"),
+                       s2=tr("右") if other == "Right" else tr("左")))
+                self.connected_sides = getattr(self, "connected_sides", set())
+                self.connected_sides.add(device.get("side"))
+                self.side_combo.setCurrentIndex(0 if other == "Left" else 1)
+                self.ok_btn.setEnabled(False)
+                self.found_device = None
+                # 立刻重新扫描第二只（不等用户手点）
+                QTimer.singleShot(1200, self.start_scan)
+            else:
+                self.accept()
         else:
             pass  # No device found
 
@@ -1233,12 +1379,48 @@ class Joy2WinGUI(QMainWindow):
             
             # Connect tab buttons
             tab.add_btn.clicked.connect(lambda checked, idx=i: self.add_controller_to_pair(idx))
+            tab.add_separate_btn.clicked.connect(
+                lambda checked, idx=i: self.add_controller_separate(idx))
             tab.disconnect_btn.clicked.connect(lambda checked, idx=i: self.disconnect_pair(idx))
         
         main_layout.addWidget(self.tab_widget)
-        
+
+        # 1.1 USB/IP 状态条 + 常驻安装按钮（误删后可随时重装）
+        import usbip_setup as _us
+        usbip_bar = QHBoxLayout()
+        self.usbip_status = QLabel()
+        self.usbip_status.setStyleSheet("color:#5c2340;")
+        usbip_bar.addWidget(self.usbip_status)
+        usbip_bar.addStretch()
+        self.install_usbip_btn = QPushButton(
+            tr("🔧 一键安装 USB/IP") if _us.is_usbip_installed() is False
+            else tr("🔧 重装/修复 USB/IP"))
+        self.install_usbip_btn.setStyleSheet(
+            "QPushButton { background:#ffd9e9; color:#5c2340; border:1px solid #f3a8c9;"
+            " border-radius:5px; padding:4px 12px; }"
+            "QPushButton:hover { background:#ffb8d8; }")
+        self.install_usbip_btn.clicked.connect(self.on_install_usbip)
+        usbip_bar.addWidget(self.install_usbip_btn)
+
+        # 重置左右记忆：纯净测试 / 纠正选错左右
+        self.reset_sides_btn = QPushButton(tr("🧹 重置左右记忆"))
+        self.reset_sides_btn.setStyleSheet(
+            "QPushButton { background:#fff0f7; color:#5c2340; border:1px solid #f3a8c9;"
+            " border-radius:5px; padding:4px 12px; }"
+            "QPushButton:hover { background:#ffd9e9; }")
+        self.reset_sides_btn.clicked.connect(self.on_reset_sides)
+        usbip_bar.addWidget(self.reset_sides_btn)
+        usbip_bar.setContentsMargins(4, 2, 4, 2)
+        usbip_bar_w = QWidget()
+        usbip_bar_w.setLayout(usbip_bar)
+        main_layout.addWidget(usbip_bar_w)
+        self._refresh_usbip_status()
+
         # Status bar
         self.statusBar().showMessage(tr("就绪 - 点击「一键连接手柄」自动连上左右两只 Joy-Con 2"))
+
+        # 1.1 首次启动：弹须知弹窗（延迟到窗口显示后）
+        QTimer.singleShot(300, self.check_first_run)
 
     def create_logo_pixmap(self):
         """加载应用图标（WinJoyCon2-Plus：JC2 → JC1，泡泡糖粉主题）。
@@ -1308,6 +1490,64 @@ class Joy2WinGUI(QMainWindow):
         except Exception as e:  # noqa: BLE001
             warning(f"托盘切换模式失败: {e}")
 
+    def _refresh_usbip_status(self):
+        import usbip_setup as _us
+        ok = _us.is_usbip_installed()
+        txt = (_us.I18N["usbip_ok_zh"] if i18n.LANG == "zh" else _us.I18N["usbip_ok_en"]) if ok \
+            else (_us.I18N["usbip_missing_zh"] if i18n.LANG == "zh" else _us.I18N["usbip_missing_en"])
+        self.usbip_status.setText(("✅ " if ok else "⚠ ") + txt)
+        self.usbip_status.setStyleSheet(
+            "color:#2a8a4a;" if ok else "color:#c4407c;")
+
+    def on_install_usbip(self):
+        """一键安装/重装 USB/IP。"""
+        import usbip_setup as _us
+        if _us.is_usbip_installed():
+            reply = QMessageBox.question(
+                self,
+                "USB/IP" if i18n.LANG == "en" else "USB/IP",
+                ("USB/IP is already installed. Reinstall anyway?"
+                 if i18n.LANG == "en" else "USB/IP 已安装，是否仍要重新安装？"),
+                QMessageBox.Yes | QMessageBox.No)
+            if reply == QMessageBox.No:
+                return
+        ok, msg = _us.install_usbip()
+        if i18n.LANG == "en":
+            QMessageBox.information(self, "Install USB/IP", msg)
+        else:
+            QMessageBox.information(self, "安装 USB/IP", msg)
+        QTimer.singleShot(1500, self._refresh_usbip_status)
+
+    def on_reset_sides(self):
+        """清空左右记忆 → 恢复纯净状态，重新走分开连接。"""
+        reply = QMessageBox.question(
+            self,
+            "Reset" if i18n.LANG == "en" else "重置左右记忆",
+            tr("重置会清除已记住的左右手柄，确定吗？"),
+            QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            import usbip_setup as _us
+            ok, msg = _us.reset_known_sides()
+            if ok:
+                self._refresh_all_connect_modes()
+            QMessageBox.information(
+                self,
+                ("Done" if ok else "Failed") if i18n.LANG == "en" else ("已重置" if ok else "重置失败"),
+                msg)
+
+    def check_first_run(self):
+        """1.1 首次启动须知：弹一次，说明左右分开连接 + USB/IP。"""
+        import usbip_setup as _us
+        if _us.first_run_done():
+            return
+        lang = i18n.LANG
+        title = _us.I18N["notice_title_en" if lang == "en" else "notice_title_zh"]
+        body = _us.I18N["notice_en" if lang == "en" else "notice_zh"]
+        QMessageBox.information(self, title, body)
+        _us.mark_first_run_done()
+        self._refresh_usbip_status()
+        self._refresh_all_connect_modes()
+
     def on_language_changed(self, index):
         """切换语言：写配置并提示重启（界面控件在启动时按语言构建）。"""
         lang = self.lang_combo.itemData(index)
@@ -1352,6 +1592,57 @@ class Joy2WinGUI(QMainWindow):
         info("Force exiting...")
         import os
         os._exit(0)
+
+    def add_controller_separate(self, pair_id: int):
+        """1.1 分开连接：让用户在对话框里手动选左/右，逐个连接并记忆。"""
+        if self.adding_controller_lock:
+            QMessageBox.information(self, tr("提示"), tr("正在连接中，请稍候"))
+            return
+        dlg = AddControllerDialog(self, connection_mode="both", pair_id=pair_id)
+        dlg.force_side_select = True   # 即使自动识别也让用户确认左右
+        dlg.setWindowTitle(tr("分开连接 - 手柄组 {n}", n=pair_id + 1))
+        if hasattr(dlg, "side_widget"):
+            dlg.side_widget.setVisible(True)
+        if hasattr(dlg, "instructions"):
+            dlg.instructions.setText(tr("分开连接：请选择这只手柄是左手柄还是右手柄，连接后会被记住。"))
+
+        # 关键：点「连接」时直接回调主窗口发起连接，不依赖 exec_() 返回值。
+        # （对话框在连续模式下不会 accept，靠返回值拿设备会导致连接请求永远发不出去）
+        def _do_connect(info):
+            info = dict(info)
+            info["pair_id"] = pair_id
+            side = info.get("side", "Left")
+            self.controller_tabs[pair_id].log_message(
+                tr("分开连接 {s}手柄：{m}", s=tr("左") if side == "Left" else tr("右"),
+                   m=info.get("mac", "")))
+            self.on_device_selected_for_pair(info, pair_id)
+            QTimer.singleShot(2500, self._refresh_all_connect_modes)
+
+        dlg.on_device = _do_connect
+        # 两只手柄都连上后自动关闭对话框
+        self._watch_pair_complete(dlg, pair_id)
+        dlg.exec_()
+
+    def _watch_pair_complete(self, dlg, pair_id):
+        """轮询检查该组是否左右都连上，是则关闭分开连接对话框。"""
+        timer = QTimer(dlg)
+        timer.setInterval(500)
+
+        def _check():
+            try:
+                pair = get_controller_manager().get_pair(pair_id)
+                if pair and pair.left.is_connected and pair.right.is_connected:
+                    timer.stop()
+                    dlg.accept()      # 关闭对话框
+            except Exception:
+                pass
+
+        timer.timeout.connect(_check)
+        timer.start()
+
+    def _refresh_all_connect_modes(self):
+        for tab in self.controller_tabs:
+            tab._refresh_connect_mode()
 
     def add_controller_to_pair(self, pair_id: int):
         """一键连接：自动扫描并连上左右两只 Joy-Con。
@@ -1424,22 +1715,7 @@ class Joy2WinGUI(QMainWindow):
             if success:
                 self.controller_tabs[pair_id].log_message(f"成功连接 {device_name}")
                 
-                # 始终尝试补连第二只手柄
-                mode = "both"
-                if mode == "both":
-                    # Check which Joy-Cons are connected
-                    manager = get_controller_manager()
-                    pair = manager.get_pair(pair_id)
-                    
-                    if pair:
-                        left_connected = pair.left.is_connected
-                        right_connected = pair.right.is_connected
-                        
-                        # Auto-prompt for second Joy-Con
-                        if left_connected and not right_connected:
-                            self.show_dual_connect_prompt(pair_id, 'Right')
-                        elif right_connected and not left_connected:
-                            self.show_dual_connect_prompt(pair_id, 'Left')
+                # 1.1: 不再弹补连对话框——分开连接在同一窗口内继续扫第二只
             else:
                 self.controller_tabs[pair_id].log_message(f"连接 {device_name} 失败")
 

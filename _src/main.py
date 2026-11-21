@@ -232,7 +232,8 @@ async def connect_joycon(device, side: str, mac: str, pair_id: Optional[int] = N
     target = device if device is not None else mac
     client = BleakClient(
         target,
-        timeout=8.0,        # 单次超时缩短：失败要快，才能尽快重试
+        timeout=5.0,        # 2026-11-21：8→5s。JC2 配对窗口只有 10s，握手要快，
+                            # 失败也要快，才能在这 10s 内完成重试
         disconnected_callback=disconnected_callback,
     )
     try:
@@ -284,7 +285,12 @@ async def connect_joycon(device, side: str, mac: str, pair_id: Optional[int] = N
         
         # Store connection info
         _connected_devices[mac] = (client, side, pair_id_result)
-        
+
+        # 记住这只手柄属于左/右（供下次一键连接快速识别 + 解锁判断）
+        # 每次连接成功都写，确保用户手动选侧的结果被持久化
+        if side in ("Left", "Right") and mac:
+            record_known_side(side, mac)
+
         # Initialize the controller
         # For "both" mode, always use duo mode even if only one Joy-Con is connected
         if mode == "both":
@@ -513,8 +519,12 @@ async def disconnect_all():
         await manager.remove_joycon(mac)
 
 
-async def scan_for_joycons():
-    """Scan for Joy-Cons - same as original Joy2Win project"""
+async def scan_for_joycons(include_connected: bool = False):
+    """Scan for Joy-Cons - same as original Joy2Win project.
+
+    include_connected=True（分开连接/纠正左右用）：不过滤已连接手柄，
+    否则用户连过之后就再也扫不到，无法重新选侧。
+    """
     device_controller = None
     
     def scan_callback(device, advertisement_data):
@@ -526,8 +536,8 @@ async def scan_for_joycons():
         if data.startswith(manufact["data-prefix"]):
             if not device_controller:
                 mac = get_mac_from_device(device)
-                # Skip if already connected
-                if mac in _connected_devices:
+                # Skip if already connected —— 分开连接模式例外
+                if mac in _connected_devices and not include_connected:
                     return
                 info(f"Controller with address: {device.address} found.")
                 device_controller = device
