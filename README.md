@@ -123,8 +123,8 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed \
 
 本项目站在以下先行者的工作之上，谨致谢意：
 
-- [Joy2Win](https://github.com/Logan-Gaillard/Joy2Win) —— 本项目的前身与起点，原始的 Joy-Con 2 → 虚拟 Joy-Con 1（USB/IP）桥接实现来源于它
-- [XinHeLianSheng-Pro2-Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge)（新合力胜 Pro2 Bridge，`source/final-three-in-one`）：参考了其内置的 usbip-win2 v0.9.7.7 USB/IP 安装包与运行时定位思路
+- [Joy2Win](https://github.com/Logan-Gaillard/Joy2Win) —— 本项目的前身与起点：**GUI 的地基**与**连接手柄的实现**均来自它
+- [新和联胜 Pro2 Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge)（`source/final-three-in-one`）：在**各个方面**都为本项目提供了宝贵参考，包括内置 usbip-win2 v0.9.7.7 的 USB/IP 安装包与运行时定位思路
 - [cezanne/usbip-win](https://github.com/cezanne/usbip-win)（usbip-win2）：提供 Windows 上的 USB/IP 驱动
 - [Alia5/VIIPER](https://github.com/Alia5/ViGEmBus)：摇杆标定方案的成熟实现
 - [ndeadly/switch2_controller_research](https://github.com/ndeadly/switch2_controller_research) 与 SDL `SDL_hidapi_switch2`：协议研究成果
@@ -224,8 +224,8 @@ Requires Windows 10/11 and Python 3.10+.
 
 This project stands on the shoulders of the following prior work — with thanks:
 
-- [Joy2Win](https://github.com/Logan-Gaillard/Joy2Win) — the predecessor and starting point of this project; the original Joy-Con 2 → virtual Joy-Con 1 (USB/IP) bridge originated there
-- [XinHeLianSheng-Pro2-Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge) (`source/final-three-in-one`): we referenced its bundled usbip-win2 v0.9.7.7 USB/IP installer and its approach to locating the runtime.
+- [Joy2Win](https://github.com/Logan-Gaillard/Joy2Win) — the predecessor and starting point of this project: both the **foundation of the GUI** and the **controller connection implementation** come from it
+- [新和联胜 Pro2 Bridge](https://github.com/LeonChrome/XinHeLianSheng-Pro2-Bridge) (`source/final-three-in-one`): provided valuable reference across **every aspect** of this project, including its bundled usbip-win2 v0.9.7.7 USB/IP installer and its approach to locating the runtime.
 - [cezanne/usbip-win](https://github.com/cezanne/usbip-win) (usbip-win2): USB/IP driver for Windows.
 - [Alia5/VIIPER](https://github.com/Alia5/ViGEmBus): mature stick-calibration implementation.
 - [ndeadly/switch2_controller_research](https://github.com/ndeadly/switch2_controller_research) and SDL `SDL_hidapi_switch2`: protocol research.
