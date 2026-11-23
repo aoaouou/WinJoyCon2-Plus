@@ -108,8 +108,9 @@ print("源码守卫")
 print("=" * 70)
 hf = (SRC / "virtual" / "hid_function.py").read_text(encoding="utf-8")
 check("节流不依赖 has_imu",
-      "if wait > 0:" in hf and "if wait > 0 and has_imu" not in hf)
-check("采用缓存报告路径", "_last_payload" in hf)
+      "if wait > 0" in hf and "if wait > 0 and has_imu" not in hf)
+check("缓存帧 + 模拟器兼容热切换",
+      "get_imu_compat_mode" in hf and "cached" in hf)
 check("注释记录 10000Hz bug", "10000Hz" in hf)
 
 print()

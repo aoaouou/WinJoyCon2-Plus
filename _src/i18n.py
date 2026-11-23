@@ -143,6 +143,12 @@ T = {
         "Reset will clear remembered controller sides. Continue?",
     "⚙ 输入模式设置": "⚙ Input Settings",
     "输入模式设置": "Input Mode Settings",
+    "Ryujinx（默认）": "Ryujinx (default)",
+    "Eden": "Eden",
+    "模拟器兼容": "Emulator compatibility",
+    "体感太快选 Eden，太慢/正常保持 Ryujinx。切换立即生效，无需重连。":
+        "Gyro too fast? pick Eden. Too slow/normal? keep Ryujinx. "
+        "Takes effect instantly, no reconnect needed.",
     "已连接{s1}手柄。请唤醒{s2}手柄并长按 SYNC，然后选侧连接。":
         "{s1} controller connected. Wake the {s2} controller, hold SYNC, then connect.",
     "{n}/4 组手柄": "{n}/4 Pairs",

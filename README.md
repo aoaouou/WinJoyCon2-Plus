@@ -8,7 +8,7 @@
 
 **WinJoyCon2-Plus，堂堂登场！**
 
-[![Version](https://img.shields.io/badge/Version-1.1-brightgreen?style=for-the-badge)](./README.md)
+[![Version](https://img.shields.io/badge/Version-1.2-brightgreen?style=for-the-badge)](./README.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
 [![Controller](https://img.shields.io/badge/Controller-Joy--Con%202-E6007D?style=for-the-badge)](https://www.nintendo.com/us/store/products/joy-con-2/)
 [![Protocol](https://img.shields.io/badge/Transport-USB%2FIP-28A745?style=for-the-badge)](https://en.wikipedia.org/wiki/USB_over_IP)
@@ -40,7 +40,18 @@
 
 **这是把游戏主机的硬件，做成了 PC 上真正通用的输入设备。走的就是这条路。**
 
-## v1.1，堂堂更新！
+## v1.2，堂堂更新！
+
+### 🌀 陀螺仪模拟器兼容热切换
+- **不同模拟器对陀螺仪重复帧的积分方式不同**：Ryujinx 需要每帧带真值，Eden 需要清除重复帧。
+- **陀螺仪设置页新增「模拟器兼容」下拉框**：`Ryujinx（默认）` / `Eden`，**切换立即生效，无需重连手柄或重启程序**。
+- 体感太快 → 选 Eden；体感正常/太慢 → 保持 Ryujinx。设置自动持久化。
+
+### 🛡 已验证与未支持的运行环境
+- ✅ **已测试**：Ryujinx 1.3.3、Eden（Stable / Nightly）——手柄按键、摇杆、HD 震动、陀螺仪均正常。
+- ❌ **暂不支持**：Steam 直连、NS PC 移植 / 转译游戏（nspc 等）。这些环境尚未验证，可能出现兼容性问题。
+
+> 两个模拟器请勿**同时占用同一只手柄**——与真实 USB 手柄一样，设备同一时间只能被一个模拟器独占；同时连接会导致后连者抢占、先连者按键错位，重连即可恢复。
 
 ### 🔀 分开连接模式：陌生手柄也能认清左右
 - **陌生 Joy-Con 2 首次使用，必须手动选择左 / 右分开连接**：先连左手就认作左、先连右手就认作右，从源头杜绝左右混淆。
@@ -185,7 +196,18 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 
 **This turns console hardware into a truly universal PC input device. This path, grandly chosen!**
 
-### v1.1, grandly updated!
+### v1.2, grandly updated!
+
+#### 🌀 Hot-swappable gyro emulator compatibility
+- **Different emulators integrate repeated gyro frames differently**: Ryujinx needs real values on every frame; Eden needs duplicate frames cleared.
+- **New "Emulator compatibility" dropdown in gyro settings**: `Ryujinx (default)` / `Eden` — **takes effect instantly, no reconnect or restart needed**.
+- Gyro too fast → pick Eden; normal/too slow → keep Ryujinx. Setting persists automatically.
+
+#### 🛡 Verified and unsupported environments
+- ✅ **Tested**: Ryujinx 1.3.3, Eden (Stable / Nightly) — buttons, sticks, HD rumble, gyro all work.
+- ❌ **Not yet supported**: Steam direct connection, NS PC ports / translation games (nspc etc.). Unverified; compatibility issues may occur.
+
+> Please do **not** let two emulators occupy the same controller at once — just like a real USB controller, a device can be owned by only one emulator at a time. Connecting both makes the later one take over and the earlier one's buttons misalign; reconnect to recover.
 
 #### 🔀 Separate connection mode: even unfamiliar controllers know left from right
 - **An unfamiliar Joy-Con 2 must be connected manually as left or right on first use**: whichever you pair first is registered as that side, eliminating left/right confusion at the source.

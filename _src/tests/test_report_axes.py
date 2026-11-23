@@ -221,20 +221,20 @@ h = make()
 check("初始 input_mode = 0x3F", h.input_mode == 0x3F, hex(h.input_mode))
 
 h.set_state(PadState())
-r = h.pending_in(1)
+r = h.pending_in(1, force=True)
 check("默认推 0x3F（带轴，Windows 可读摇杆）", r and r[0] == 0x3F,
       hex(r[0]) if r else "None")
 
 # 切到 0x30（模拟器发 SetInputReportMode 后）
 h.input_mode = 0x30
 h.set_state(PadState())
-r30 = h.pending_in(1)
+r30 = h.pending_in(1, force=True)
 check("切 0x30 后推 0x30（带 IMU）", r30 and r30[0] == 0x30,
       hex(r30[0]) if r30 else "None")
 
 h.input_mode = 0x31
 h.set_state(PadState())
-r31 = h.pending_in(1)
+r31 = h.pending_in(1, force=True)
 check("0x31 也推全模式", r31 and r31[0] == 0x31, hex(r31[0]) if r31 else "None")
 
 # 0x3F 里的轴必须跟着状态变
@@ -243,7 +243,7 @@ st = PadState()
 st.lx, st.ly = 4095, 0
 st.rx, st.ry = 0, 4095
 h2.set_state(st)
-rep = h2.pending_in(1)
+rep = h2.pending_in(1, force=True)
 lx = int.from_bytes(rep[4:6], "little")
 ly = int.from_bytes(rep[6:8], "little")
 _c2x, _c2y = h2.encoder.stick_center

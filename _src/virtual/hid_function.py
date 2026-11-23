@@ -19,6 +19,7 @@ import time
 from typing import List, Optional
 
 from . import descriptors as D
+from .imu_proc import get_imu_compat_mode
 from .reports import JoyConEncoder, PadState
 from .usbip import (
     DESC_CONFIGURATION,
@@ -143,8 +144,10 @@ class Switch1HidFunction(UsbFunction):
         self._input_mode = mode
         self._last_payload = None
 
-    def pending_in(self, ep: int) -> Optional[bytes]:
+    def pending_in(self, ep: int, force: bool = False) -> Optional[bytes]:
         """中断 IN 端点：回一份输入报告，或先回子命令应答。
+
+        force=True（仅 kick_input 在真帧到达时调用）：跳过节拍检查，强制生成真帧。
 
         ## 节流是必须的，否则体感会被放大几十倍
 
@@ -178,53 +181,32 @@ class Switch1HidFunction(UsbFunction):
             now = time.monotonic()
             wait = period - (now - self._last_send)
 
-        # ═══ 节流：三种实现对比（2026-11-19 定稿）═══
+        # ═══ 缓存帧 + 短让出（2026-11-23：加模拟器兼容热切换）═══
+        # NAK 模型实测导致陀螺仪卡顿（URB 4ms 提交 250/s，kick 只消费 66/s，
+        # 队列积压延迟累积），已回滚。回到稳定的缓存帧模型。
+        # 注意：纯缓存+完全不 sleep 曾测出 10000Hz 空转、CPU 烧满（历史坑），
+        # 所以这里 sleep 上限 period/3，绝不走无 sleep 的空转路径。
         #
-        # 背景：主机按端点描述符的 bInterval=4ms 轮询（descriptors.py），
-        # 而报告节拍是 15ms —— 两者不匹配，必须选对"空拉"的处理方式。
-        #
-        # ① `sleep(wait)` 睡满到节拍：
-        #      usbip.py `_urb_loop` 是**每设备一条线程、串行处理该设备全部 URB**，
-        #      OUT（震动）与 IN（输入）都在上面。睡 15ms 会把震动 OUT 一起堵住
-        #      → 一震动就不跟手 / 主机判超时弹「输入配置无效」。
-        #
-        # ② `return None` 立即返回、让 URB 挂起：
-        #      25 次/秒×10 的请求全堆进无上限 `_pending_in` → 队列爆炸 → 更卡。
-        #
-        # ③ **返回上一份缓存报告**（本实现的定稿）：
-        #      立刻应答、零阻塞、零堆积。参照 viiper（Alia5/VIIPER）
-        #      device/input_queue.go 原文：
-        #        "legacy devices keep the USBIP **cached-report
-        #         compatibility path**."
-        #
-        # 为什么不会「体感被放大几十倍」（2026-11-18 踩过的 10000Hz 空转 bug）：
-        #   节流语义仍然有效 —— **新内容**只在距上次发送 >= period 时才产生
-        #   （`_last_send` 不因缓存返回而推进）。
-        #   缓存帧只是复用旧内容，主机积分不会重复累加同一份 IMU 样本。
-        #   test_report_throttle.py 按「内容更新率」验证，实测约 62Hz ≈ 66Hz。
+        # 两个模拟器对缓存帧的积分方式不同，用热切换兼容：
+        #   · "ryujinx"（默认）：缓存帧原样带 gyro —— Ryujinx 按帧间隔积分，
+        #     需要每帧带真值；Eden 下会放大 ~4 倍。
+        #   · "eden"：缓存帧 gyro 清零 —— Eden 按固定 dt 积分，重复帧会多算；
+        #     清零后正常，但 Ryujinx 下会变慢 ~4 倍。
+        # imu_compat_mode 由 GUI 下拉实时切换（无需重启），并持久化到 config.ini。
         if wait > 0:
-            # ★★★ 2026-11-19 最终定稿（第三次修正）：缓存报告 + 短让出 ★★★
-            #
-            # 曾经踩过的三个坑（全部实测）：
-            #   ① `sleep(wait)` 睡满 15ms：
-            #      URB 线程停摆，震动 OUT 被堵 → 一震动就不跟手。
-            #   ② `return None` 让 URB 挂起：
-            #      主机 4ms 轮询 vs 66Hz 数据，请求全堆进无上限队列 → 爆炸。
-            #   ③ 纯缓存报告、**完全不等待**（上一版）：
-            #      pending_in 变成纯内存操作（实测 240 万次/秒），
-            #      主机驱动以极限速度空转拉取 → **CPU 烧满 → 延迟巨大**。
-            #
-            # 现在：**缓存报告 + 让出 CPU 一小段**。
-            #   · 用 1/3 个周期（5ms）上限，不会把震动 OUT 堵太久
-            #   · 又足以把主机空转压到正常范围（不会 240 万次/秒）
-            #   · 返回缓存帧而不是 None，所以 IN 请求不会堆积
-            #
-            # CPU 实测：纯缓存 240 万次/秒 → 加让出后回到正常量级。
             _max_wait = period / 3.0
             time.sleep(min(wait, _max_wait))
             with self._lock:
                 cached = self._last_payload
             if cached is not None:
+                if (get_imu_compat_mode() == "eden"
+                        and self.input_mode in (0x30, 0x31, 0x32, 0x33)
+                        and len(cached) >= 49):
+                    b = bytearray(cached)
+                    for _i in range(3):
+                        _base = 13 + _i * 12
+                        b[_base + 6:_base + 12] = b"\x00" * 6
+                    return bytes(b)
                 return cached
 
         with self._lock:

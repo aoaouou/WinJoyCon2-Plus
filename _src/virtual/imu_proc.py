@@ -62,6 +62,65 @@ def _clamp(v):
     return -INT16_MAX if v < -INT16_MAX else (INT16_MAX if v > INT16_MAX else v)
 
 
+# ── 模拟器兼容模式（热切换）──────────────────────────────────────────────
+# "ryujinx"（默认）：缓存帧原样带 gyro。Ryujinx 按实际帧间隔积分，正常。
+# "eden"：缓存帧 gyro 清零。Eden 按固定 dt 积分，避免重复帧多算。
+# 运行时可随时切换，立即生效（get 每次读模块变量），并持久化到 config.ini。
+_IMU_COMPAT_MODE = "ryujinx"
+
+
+def get_imu_compat_mode() -> str:
+    return _IMU_COMPAT_MODE
+
+
+def set_imu_compat_mode(mode: str, persist: bool = True):
+    global _IMU_COMPAT_MODE
+    if mode not in ("ryujinx", "eden"):
+        return
+    _IMU_COMPAT_MODE = mode
+    if persist:
+        try:
+            import configparser
+            from app_paths import config_path
+            import os
+            p = config_path()
+            cp = configparser.ConfigParser()
+            if os.path.exists(p):
+                cp.read(p, encoding="utf-8")
+            if "Controller" not in cp:
+                cp["Controller"] = {}
+            cp["Controller"]["imu_compat_mode"] = mode
+            with open(p, "w", encoding="utf-8") as f:
+                cp.write(f)
+        except Exception:
+            pass
+
+
+def load_imu_compat_mode():
+    """启动时从 config.ini 读取模式（不写盘）。"""
+    try:
+        import configparser
+        from app_paths import config_path
+        import os
+        p = config_path()
+        cp = configparser.ConfigParser()
+        if os.path.exists(p):
+            cp.read(p, encoding="utf-8")
+            m = cp.get("Controller", "imu_compat_mode", fallback="ryujinx").strip().lower()
+            if m in ("ryujinx", "eden"):
+                set_imu_compat_mode(m, persist=False)
+    except Exception:
+        pass
+
+
+# ── 0x30 报告的 IMU 填充：3 组同值（协议标准）──────────────────────────────
+# 真机与 SDL/Ryujinx 的标准模型：一帧 15ms 带 3 组采样（0/5/10ms），
+# 主机按 5ms×3 积分 = 15ms，所以 3 组都填当前真值是正确做法。
+# 真 JC1 在 Ryujinx 与 Eden 表现一致，说明两个模拟器的积分逻辑相同 ——
+# Eden 异常的根因不是"3 组怎么填"，而是我们重复发送**缓存帧**时，
+# 仍带着相同的 IMU 值，Eden 对它再次积分导致放大（见 hid_function 的修复）。
+
+
 def imu(side, raw6):
     """(ax,ay,az,gx,gy,gz) JC2 原始值 -> JC1 报告 6 元组。"""
     ax, ay, az, gx, gy, gz = (int(v) for v in raw6)
