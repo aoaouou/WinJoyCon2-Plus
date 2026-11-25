@@ -78,12 +78,19 @@ internal static class Program
     static readonly List<StreamWriter> _subscribers = new();
     static readonly object _subLock = new();
     static string _profilesDir = "";
+    static string _profileSet = "grip";  // grip = 充电握把(200E)；jc2 = 独立 JC2(2067/2066)
 
     static int Main(string[] args)
     {
-        // args[0] = profiles directory; args[1] optional port override
+        // args[0] = profiles directory
+        // args[1] = profile set: "grip" (默认) 或 "jc2"
+        // args[2] = optional port override
         _profilesDir = args.Length > 0 ? args[0] : AppContext.BaseDirectory;
-        int port = args.Length > 1 && int.TryParse(args[1], out var p) ? p : Port;
+        if (args.Length > 1 && (args[1] == "grip" || args[1] == "jc2"))
+            _profileSet = args[1];
+        int portArg = args.Length > 2 ? 2 : 1;
+        int port = args.Length > portArg && int.TryParse(args[portArg], out var p) ? p : Port;
+        Console.WriteLine($"profile set = {_profileSet}");
 
         string dll = Path.Combine(AppContext.BaseDirectory, "HIDMaestro.Core.dll");
         if (!File.Exists(dll))
@@ -166,7 +173,17 @@ internal static class Program
                                 var buttons = uint.Parse(parts[2], Inv);
                                 int lx = int.Parse(parts[3], Inv), ly = int.Parse(parts[4], Inv),
                                     rx = int.Parse(parts[5], Inv), ry = int.Parse(parts[6], Inv);
-                                SetState(side, buttons, lx, ly, rx, ry);
+                                // 可选第 7 参数：十字键角度（0=N,90=E,180=S,270=W,
+                                // 45/135/225/315=对角；-1=无方向）。真机握把
+                                // profile 的 DPAD_* 是 sentinel，只能经 Hat 写入，
+                                // buttons 掩码写不进去（VendorBlobCodec.cs:1112-1137）。
+                                float? hat = null;
+                                if (parts.Length >= 8)
+                                {
+                                    float h = float.Parse(parts[7], Inv);
+                                    if (h >= 0) hat = h;
+                                }
+                                SetState(side, buttons, lx, ly, rx, ry, hat);
                                 writer.WriteLine("OK");
                             }
                             catch (Exception ex) { writer.WriteLine("ERR " + Safe(ex)); }
@@ -225,16 +242,18 @@ internal static class Program
         var issues = (System.Collections.IEnumerable)_ctxType.GetProperty("ProfileLoadIssues")!.GetValue(_ctx)!;
         foreach (var i in issues.Cast<object>()) Console.Error.WriteLine("profile issue: " + i);
 
-        // 真机原版握把 profile：逐字节来自真机抓包（linux-hardware.org probe
-        // 5c2a36d024 + dekuNukem issue 7 的 usbmon + shinyquagsire23 的 rdesc）。
-        // SDL 会把这两只握把槽里的 JC 自动组合成一只 Joy-Con (L/R)；
-        // 用户在 Steam 里关掉「组合手柄」即得到两只独立的 Joy-Con (L)/(R)。
-        // 实测：所有按键与双摇杆均有数据，位序与真机一致。
-        foreach (var (side, profileId) in new[]
-        {
-            ("L", "joycon-l-usb"),
-            ("R", "joycon-r-usb"),
-        })
+        // 两种设备形态：
+        //   grip（默认）：真机原版充电握把 profile（057E:200E），逐字节来自
+        //     真机抓包（linux-hardware.org probe 5c2a36d024 + dekuNukem issue 7
+        //     usbmon + shinyquagsire23 rdesc）。SDL 组合/分开都正常，功能全。
+        //   jc2：真机 Joy-Con 2 profile（057E:2067/2066），100 字节真机描述符，
+        //     0x05/0x07/0x08 报告。身份是真 JC2，但按资料
+        //     (n-mwud4kmjni71 第七节) SDL 的 switch2 驱动需要 libusb 第二接口，
+        //     虚拟设备不可达 → 组合/陀螺仪/震动在 SDL 系不可用。
+        var profilePair = _profileSet == "jc2"
+            ? new[] { ("L", "switch2-joycon-left"), ("R", "switch2-joycon-right") }
+            : new[] { ("L", "joycon-l-usb"), ("R", "joycon-r-usb") };
+        foreach (var (side, profileId) in profilePair)
         {
             var prof = _getProfile.Invoke(_ctx, new object[] { profileId });
             if (prof == null) throw new Exception("profile missing: " + profileId);
@@ -300,7 +319,10 @@ internal static class Program
 
     static void HookOutput(Device dev, object ctrl)
     {
-        // Try OutputDecoded (EventHandler<T> with LeftMotor/RightMotor fields).
+        // OutputDecoded is EventHandler<HMOutputDecodedEventArgs>. That event
+        // args has NO LeftMotor/RightMotor fields: the rumble amplitudes come
+        // in its `Fields` dictionary under the profile's decoder semantics
+        // ("leftMotor" / "rightMotor", boxed as byte). Read those keys.
         var ev = ctrl.GetType().GetEvent("OutputDecoded");
         if (ev != null)
         {
@@ -308,16 +330,27 @@ internal static class Program
             {
                 var handlerType = ev.EventHandlerType!;
                 var argsType = handlerType.GetGenericArguments()[0];
-                var leftF = argsType.GetField("LeftMotor");
-                var rightF = argsType.GetField("RightMotor");
-                if (leftF != null && rightF != null)
+                var fieldsProp = argsType.GetProperty("Fields");
+                var rawProp = argsType.GetProperty("RawBytes");
+                if (fieldsProp != null)
                 {
                     Delegate d = Delegate.CreateDelegate(handlerType, null,
                         new Action<object, object>((s, e) =>
                         {
-                            float l = Convert.ToSingle(leftF.GetValue(e), Inv);
-                            float r = Convert.ToSingle(rightF.GetValue(e), Inv);
-                            PublishRumble(dev, l, r, "OUT");
+                            var fields = fieldsProp.GetValue(e) as System.Collections.IDictionary;
+                            float ToAmp(string key)
+                            {
+                                if (fields == null) return 0f;
+                                foreach (System.Collections.DictionaryEntry kv in fields)
+                                    if (string.Equals(kv.Key as string, key, StringComparison.OrdinalIgnoreCase))
+                                        return Convert.ToSingle(kv.Value, Inv) / 255f;
+                                return 0f;
+                            }
+                            float l = ToAmp("leftMotor"), r = ToAmp("rightMotor");
+                            if (l > 0f || r > 0f) { PublishRumble(dev, l, r, "OUT"); return; }
+                            // Fallback: forward the raw output report bytes.
+                            if (rawProp?.GetValue(e) is ReadOnlyMemory<byte> rom)
+                                PublishRaw(dev, rom.ToArray());
                         }).Method);
                     ev.AddEventHandler(ctrl, d);
                     return;
@@ -368,7 +401,7 @@ internal static class Program
         }
     }
 
-    static void SetState(string side, uint buttons, int lx, int ly, int rx, int ry)
+    static void SetState(string side, uint buttons, int lx, int ly, int rx, int ry, float? hat = null)
     {
         lock (_devicesLock)
         {
@@ -377,6 +410,9 @@ internal static class Program
             {
                 dev.Buttons = buttons;
                 _stateType.GetField("Buttons")!.SetValue(dev.State, Enum.ToObject(_btnType, buttons));
+                // 十字键：DPAD_* 是编译期 sentinel，运行时由 Hat/HatDegrees 解析
+                // （VendorBlobCodec.cs:1112-1137），buttons 掩码写不进去。
+                _stateType.GetField("HatDegrees")!.SetValue(dev.State, hat.HasValue ? (object)hat.Value : null);
                 var axes = dev.Axes;
                 // Each half only carries its own stick: the left half writes
                 // the left stick axes, the right half the right ones. The

@@ -51,96 +51,181 @@ BRIDGE_PORT = 3250
 _BRIDGE_EXE = "HmBridge.exe"
 _PROFILES_DIR = "hidmaestro_profiles"
 
-# ---- HIDMaestro 的按钮位掩码（VendorBlobProgram.cs:98-114，64 位）----
-# 普通按钮在 HMButton 的 32 位掩码空间内；LT_DIGITAL / RT_DIGITAL 与四个
-# D-pad 方向是**独立的 sentinel 位**，在 32 位之上（bit 32..37）。
+# ---- 真机握把 profile 的按钮位映射（静态推导，非直觉语义位）----
+# HIDMaestro 自带 joycon-l-usb / joycon-r-usb 的 stateBlock 用 "#n" 把
+# HMButton 第 n 位搬到 0x30 报告的特定位；SDL HandleCombinedControllerStateL/R
+# 又按自己的位置名读这些位。两者合成的映射是"故意错位"的，必须照表填：
 #
-# ★ 之前这里用 32 位掩码，且把 D-pad 写成 1<<3（那其实是 Y 键）：D-pad 按下
-#   会变成 Y，扳机位根本装不下 —— 表现就是「按键全无反应」。
-_HM_A = 1 << 0
-_HM_B = 1 << 1
-_HM_X = 1 << 2
-_HM_Y = 1 << 3
-_HM_LEFT_BUMPER = 1 << 4
-_HM_RIGHT_BUMPER = 1 << 5
-_HM_BACK = 1 << 6
-_HM_START = 1 << 7
-_HM_LEFT_STICK = 1 << 8
-_HM_RIGHT_STICK = 1 << 9
-_HM_GUIDE = 1 << 10
-_HM_SHARE = 1 << 12
-_HM_RIGHT_PADDLE = 1 << 13
-_HM_LEFT_PADDLE = 1 << 14
-_HM_MISC1 = 1 << 15
-_HM_LEFT_TRIGGER = 1 << 23
-_HM_RIGHT_TRIGGER = 1 << 24
-_HM_LT_DIGITAL = 1 << 32
-_HM_RT_DIGITAL = 1 << 33
-_HM_DPAD_UP = 1 << 34
-_HM_DPAD_DOWN = 1 << 35
-_HM_DPAD_LEFT = 1 << 36
-_HM_DPAD_RIGHT = 1 << 37
+#   L 半（SDL 组合模式读出）：
+#     MINUS「−」→ 1<<8    LS 按下 → 1<<10   CAPTURE → 1<<13
+#     L1        → 1<<14   ZL      → 1<<15（模拟满拉）
+#     SL_L      → 1<<4    SR_L    → 1<<5
+#   R 半：
+#     A(位置) → 1<<3   B(位置) → 1<<1   X(位置) → 1<<2   Y(位置) → 1<<0
+#     PLUS「+」→ 1<<9   RS 按下 → 1<<11  HOME    → 1<<12
+#     R1      → 1<<14   ZR      → 1<<15（模拟满拉）
+#     SL_R    → 1<<4    SR_R    → 1<<5
+#
+# ★ 方向键不能用按钮掩码：DPAD_* 是 32 位以外的 sentinel（1<<34..37），
+#   桥接用 uint.Parse 解析会溢出 → 整帧报废。方向键改由 Hat（HatDegrees）
+#   传，见 update()。ZL/ZR 也不要带 1<<32/33（同样溢出）。
+_HM_MINUS = 1 << 8
+_HM_LS = 1 << 10
+_HM_CAPTURE = 1 << 13
+_HM_L1 = 1 << 14
+_HM_R1 = 1 << 14
+_HM_TRIGGER = 1 << 15
+_HM_SL = 1 << 4
+_HM_SR = 1 << 5
+_HM_L_HOME = 1 << 12
+# R 半 ABXY（位置名）；slot 标签 #3=Y 却产生位置 A，反之亦然
+_HM_R_POS_A = 1 << 3   # SDL SOUTH（Xbox 布局显示 A）
+_HM_R_POS_B = 1 << 1   # SDL EAST（显示 B）
+_HM_R_POS_X = 1 << 2   # SDL WEST（显示 X）
+_HM_R_POS_Y = 1 << 0   # SDL NORTH（显示 Y）
+_HM_PLUS = 1 << 9
+_HM_RS = 1 << 11
+_HM_HOME = 1 << 12
 
 
-def _ns2_to_hm(bits: int, side: str) -> int:
-    """Ns2Bit -> HIDMaestro 的 64 位按钮掩码。"""
+def _ns2_to_hm_jc2(bits: int, side: str) -> int:
+    """Ns2Bit → 独立 JC2 profile 的 HMButton 掩码（语义位，直觉映射）。
+
+    switch2-joycon-left/right.json 的 extendedReport 用语义名（A/B/X/Y/
+    DPAD_*/LeftBumper…），不是握把 profile 的错位 "#n"，所以这里按语义给。
+    """
     from virtual.reports import Ns2Bit
     b = int(bits)
     hm = 0
     if b & Ns2Bit.A:
-        hm |= _HM_A
+        hm |= 1 << 0
     if b & Ns2Bit.B:
-        hm |= _HM_B
+        hm |= 1 << 1
     if b & Ns2Bit.X:
-        hm |= _HM_X
+        hm |= 1 << 2
     if b & Ns2Bit.Y:
-        hm |= _HM_Y
+        hm |= 1 << 3
     if b & Ns2Bit.L:
-        hm |= _HM_LEFT_BUMPER
+        hm |= 1 << 4
     if b & Ns2Bit.R:
-        hm |= _HM_RIGHT_BUMPER
-    if b & Ns2Bit.ZL:
-        hm |= _HM_LEFT_TRIGGER | _HM_LT_DIGITAL
-    if b & Ns2Bit.ZR:
-        hm |= _HM_RIGHT_TRIGGER | _HM_RT_DIGITAL
-    if b & Ns2Bit.PLUS:
-        hm |= _HM_START
+        hm |= 1 << 5
     if b & Ns2Bit.MINUS:
-        hm |= _HM_BACK
+        hm |= 1 << 6
+    if b & Ns2Bit.PLUS:
+        hm |= 1 << 7
     if b & Ns2Bit.LS:
-        hm |= _HM_LEFT_STICK
+        hm |= 1 << 8
     if b & Ns2Bit.RS:
-        hm |= _HM_RIGHT_STICK
+        hm |= 1 << 9
     if b & Ns2Bit.HOME:
-        hm |= _HM_GUIDE
+        hm |= 1 << 10
     if b & Ns2Bit.CAPTURE:
-        hm |= _HM_SHARE
+        hm |= 1 << 12
     if b & Ns2Bit.UP:
-        hm |= _HM_DPAD_UP
+        hm |= 1 << 3   # 见 profile extendedReport byte3 位序
     if b & Ns2Bit.DOWN:
-        hm |= _HM_DPAD_DOWN
+        hm |= 1 << 0
     if b & Ns2Bit.LEFT:
-        hm |= _HM_DPAD_LEFT
+        hm |= 1 << 2
     if b & Ns2Bit.RIGHT:
-        hm |= _HM_DPAD_RIGHT
-    if b & Ns2Bit.SL_L:
-        hm |= _HM_LEFT_PADDLE
-    if b & Ns2Bit.SR_L:
-        hm |= _HM_RIGHT_PADDLE
-    if b & Ns2Bit.SL_R:
-        hm |= _HM_LEFT_PADDLE
-    if b & Ns2Bit.SR_R:
-        hm |= _HM_RIGHT_PADDLE
-    if b & Ns2Bit.C:
-        hm |= _HM_MISC1
-    return hm & 0xFFFFFFFFFFFFFFFF
+        hm |= 1 << 1
+    return hm & 0xFFFFFFFF
+
+
+def _ns2_to_hm(bits: int, side: str) -> int:
+    """Ns2Bit → 真机握把 profile 的 32 位 HMButton 掩码（按推导表）。"""
+    from virtual.reports import Ns2Bit
+    b = int(bits)
+    hm = 0
+    if side == "L":
+        if b & Ns2Bit.MINUS:
+            hm |= _HM_MINUS
+        if b & Ns2Bit.LS:
+            hm |= _HM_LS
+        if b & Ns2Bit.CAPTURE:
+            hm |= _HM_CAPTURE
+        if b & Ns2Bit.L:
+            hm |= _HM_L1
+        if b & Ns2Bit.ZL:
+            hm |= _HM_TRIGGER
+        if b & Ns2Bit.SL_L:
+            hm |= _HM_SL
+        if b & Ns2Bit.SR_L:
+            hm |= _HM_SR
+    else:
+        # R 半 ABXY 用位置映射（SDL SOUTH/EAST/WEST/NORTH）
+        if b & Ns2Bit.A:
+            hm |= _HM_R_POS_A
+        if b & Ns2Bit.B:
+            hm |= _HM_R_POS_B
+        if b & Ns2Bit.X:
+            hm |= _HM_R_POS_X
+        if b & Ns2Bit.Y:
+            hm |= _HM_R_POS_Y
+        if b & Ns2Bit.PLUS:
+            hm |= _HM_PLUS
+        if b & Ns2Bit.RS:
+            hm |= _HM_RS
+        if b & Ns2Bit.HOME:
+            hm |= _HM_HOME
+        if b & Ns2Bit.R:
+            hm |= _HM_R1
+        if b & Ns2Bit.ZR:
+            hm |= _HM_TRIGGER
+        if b & Ns2Bit.SL_R:
+            hm |= _HM_SL
+        if b & Ns2Bit.SR_R:
+            hm |= _HM_SR
+    # C 键在 Switch 2 实机触发语音聊天，PC 上保留系统级切换，不进手柄掩码
+    return hm & 0xFFFFFFFF
+
+
+def _ns2_hat_degrees(bits: int, side: str):
+    """方向键 → Hat 角度（0=N 顺时针）。无方向返回 None。
+
+    DPAD_* 走 sentinel，只能经 HMGamepadState.HatDegrees 写入；桥接协议
+    STATE 第 7 参数传这个角度。
+    """
+    from virtual.reports import Ns2Bit
+    b = int(bits)
+    up = bool(b & Ns2Bit.UP)
+    down = bool(b & Ns2Bit.DOWN)
+    left = bool(b & Ns2Bit.LEFT)
+    right = bool(b & Ns2Bit.RIGHT)
+    if up and right:
+        return 45.0
+    if right and down:
+        return 135.0
+    if down and left:
+        return 225.0
+    if left and up:
+        return 315.0
+    if up:
+        return 0.0
+    if right:
+        return 90.0
+    if down:
+        return 180.0
+    if left:
+        return 270.0
+    return None
 
 
 class HidMaestroJoyCon2:
     """两只虚拟原生 Joy-Con 2（HIDMaestro 后端）。"""
 
-    def __init__(self, side: str = "both"):
+    def __init__(self, side: str = "both", profile_set: str = None):
         self.side = side.lower()
+        # profile_set：grip（充电握把 200E，功能全）/ jc2（独立 JC2 2067/2066）
+        # 未显式指定时从 config 的 output_mode 决定。
+        if profile_set is None:
+            try:
+                from config import Config
+                m = str(Config().getConfig().get("output_mode", "hidmaestro")).strip().lower()
+                profile_set = "jc2" if m in ("hidmaestro", "jc2", "jc2native") else "grip"
+            except Exception:
+                profile_set = "grip"
+        self.profile_set = "jc2" if str(profile_set).lower() in ("jc2", "hidmaestro", "jc2native") else "grip"
         self._lock = threading.Lock()
         self._bits_l = 0
         self._bits_r = 0
@@ -198,7 +283,8 @@ class HidMaestroJoyCon2:
         try:
             ps = (
                 "Start-Process -FilePath '" + exe + "' "
-                "-ArgumentList @('" + profiles + "') -Verb RunAs -WindowStyle Hidden"
+                "-ArgumentList @('" + profiles + "','" + self.profile_set + "') "
+                "-Verb RunAs -WindowStyle Hidden"
             )
             self._proc = subprocess.Popen(
                 ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
@@ -333,13 +419,25 @@ class HidMaestroJoyCon2:
             return
         try:
             with self._lock:
-                bl = _ns2_to_hm(self._bits_l, "L")
-                br = _ns2_to_hm(self._bits_r, "R")
+                if self.profile_set == "jc2":
+                    # 独立 JC2：语义位映射，方向键在按钮位里（profile 用语义名）
+                    bl = _ns2_to_hm_jc2(self._bits_l, "L")
+                    br = _ns2_to_hm_jc2(self._bits_r, "R")
+                else:
+                    # 握把：错位位映射，方向键走 hat
+                    bl = _ns2_to_hm(self._bits_l, "L")
+                    br = _ns2_to_hm(self._bits_r, "R")
                 lx, ly = self._stick_l
                 rx, ry = self._stick_r
                 imu_l, imu_r = self._imu_l, self._imu_r
-            self._send(f"STATE L {bl} {lx} {ly} {rx} {ry}")
-            self._send(f"STATE R {br} {lx} {ly} {rx} {ry}")
+            hl = hr = "-1"
+            if self.profile_set != "jc2":
+                hat_l = _ns2_hat_degrees(self._bits_l, "L")
+                hat_r = _ns2_hat_degrees(self._bits_r, "R")
+                hl = "-1" if hat_l is None else f"{hat_l:.1f}"
+                hr = "-1" if hat_r is None else f"{hat_r:.1f}"
+            self._send(f"STATE L {bl} {lx} {ly} {rx} {ry} {hl}")
+            self._send(f"STATE R {br} {lx} {ly} {rx} {ry} {hr}")
             self._send("IMU L " + " ".join(f"{v:.4f}" for v in imu_l))
             self._send("IMU R " + " ".join(f"{v:.4f}" for v in imu_r))
         except Exception as exc:

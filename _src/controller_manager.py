@@ -113,8 +113,9 @@ class ControllerManager:
         # ---- 输出层 ----
         # 接口与 VX360Gamepad 完全一致，所以上层 press_button /
         # left_joystick / update 一行都不用改。
-        #   output_mode = joycon1（默认）：虚拟 Joy-Con 1（057E:2006/2007，USB/IP）
-        #   output_mode = hidmaestro：原生 Joy-Con 2（057E:2067/2066，HIDMaestro）
+        #   output_mode = hidmaestro/jc2：原生 Joy-Con 2（057E:2067/2066，HIDMaestro）
+        #   output_mode = grip：充电握把形态（057E:200E，Switch 1 握把协议）
+        #   output_mode = joycon1：虚拟 Joy-Con 1（057E:2006/2007，USB/IP）
         try:
             from config import Config
             mode = str(Config().getConfig().get("output_mode", "joycon1")).strip().lower()
@@ -122,12 +123,14 @@ class ControllerManager:
             mode = "joycon1"
 
         try:
-            if mode == "hidmaestro":
+            if mode in ("hidmaestro", "jc2", "jc2native", "grip"):
                 from virtual.hidmaestro_out import HidMaestroJoyCon2
+                pset = "grip" if mode == "grip" else "jc2"
                 pair.gamepad_side = "both"
-                pair.gamepad = HidMaestroJoyCon2(side="both")
-                _lg_info("输出：原生 Joy-Con 2（HIDMaestro）")
-                print("[输出] 原生 Joy-Con 2（HIDMaestro）", flush=True)
+                pair.gamepad = HidMaestroJoyCon2(side="both", profile_set=pset)
+                label = "充电握把形态（057E:200E）" if pset == "grip" else "原生 Joy-Con 2（057E:2067/2066）"
+                _lg_info(f"输出：{label}（HIDMaestro）")
+                print(f"[输出] {label}（HIDMaestro）", flush=True)
                 return
 
             from virtual.vjoy_out import VirtualJoyCon1

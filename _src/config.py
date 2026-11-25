@@ -38,6 +38,8 @@ class Config:
         "srr_mapping": "",      # SR Right mapping (empty = unmapped)
         # 输出模式：
         #   hidmaestro = 原生 Joy-Con 2（057E:2067 L / 2066 R，HIDMaestro）—— 默认
+        #   grip       = 充电握把形态（057E:200E，Switch 1 握把 0x30 协议）：
+        #                SDL 里组合/分开都正常，功能按 Switch 1 协议
         #   joycon1    = 虚拟 Joy-Con 1（057E:2006 / 2007，USB/IP）—— 旧路径，保留
         #   xgip       = 虚拟 Xbox 360（原版行为）
         "output_mode": "hidmaestro",
