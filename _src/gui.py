@@ -769,6 +769,26 @@ class ControllerPairTab(QWidget):
         """Clear this pair's log output"""
         self.log_output.clear()
 
+    def on_output_mode_changed(self, index: int):
+        """切换输出模式：写 config + 提示重启（设备形态只能在启动时建）。"""
+        mode = self.output_mode_combo.itemData(index)
+        if not mode:
+            return
+        try:
+            from config import Config
+            Config().set_output_mode(mode)
+        except Exception as e:  # noqa: BLE001
+            self.log_message(f"保存输出模式失败: {type(e).__name__}: {e}")
+            return
+        names = {
+            "hidmaestro": tr("原生 Joy-Con 2 (2067/2066)"),
+            "grip": tr("充电握把 (200E)"),
+            "joycon1": tr("虚拟 Joy-Con 1"),
+        }
+        QMessageBox.information(
+            self, tr("输出模式已切换"),
+            tr("已切换到：%s\n\n请完全退出程序后重新启动，新的手柄形态才会生效。") % names.get(mode, mode))
+
 
 class ScanThread(QThread):
     """Thread for scanning Joy-Cons"""
@@ -1607,26 +1627,6 @@ class Joy2WinGUI(QMainWindow):
     def tray_activated(self, reason):
         if reason == QSystemTrayIcon.DoubleClick:
             self.show_and_raise()
-
-    def on_output_mode_changed(self, index: int):
-        """切换输出模式：写配置 + 提示重启（设备形态只能在启动时建）。"""
-        mode = self.output_mode_combo.itemData(index)
-        if not mode:
-            return
-        try:
-            from config import Config
-            Config().set_output_mode(mode)
-        except Exception as e:  # noqa: BLE001
-            warning(f"保存输出模式失败: {type(e).__name__}: {e}")
-            return
-        names = {
-            "hidmaestro": tr("原生 Joy-Con 2 (2067/2066)"),
-            "grip": tr("充电握把 (200E)"),
-            "joycon1": tr("虚拟 Joy-Con 1"),
-        }
-        QMessageBox.information(
-            self, tr("输出模式已切换"),
-            tr("已切换到：%s\n\n请完全退出程序后重新启动，新的手柄形态才会生效。") % names.get(mode, mode))
 
     def quit_application(self):
         """真正退出应用程序（不弹确认，干净利落）。"""
