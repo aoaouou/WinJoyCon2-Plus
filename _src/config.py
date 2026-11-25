@@ -135,3 +135,22 @@ class Config:
             "srr_mapping": self.srr_mapping,
             "output_mode": self.output_mode,
         }
+
+    def set_output_mode(self, mode: str) -> None:
+        """把 output_mode 写回 config.ini，并同步内存值。
+
+        只改这一个键，其它配置原样保留（读侧/写侧用同一个编码探测）。
+        """
+        import configparser
+        from error_handler import _cfg_encoding
+        mode = str(mode).strip().lower()
+        cp = configparser.ConfigParser()
+        enc = _cfg_encoding(self._config_path)
+        if os.path.exists(self._config_path):
+            cp.read(self._config_path, encoding=enc)
+        if not cp.has_section("Controller"):
+            cp.add_section("Controller")
+        cp.set("Controller", "output_mode", mode)
+        with open(self._config_path, "w", encoding=enc) as f:
+            cp.write(f)
+        self.output_mode = mode

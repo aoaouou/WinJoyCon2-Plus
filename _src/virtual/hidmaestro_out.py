@@ -246,9 +246,16 @@ class HidMaestroJoyCon2:
     # ---------- 生命周期 ----------
 
     def _bridge_paths(self):
-        # 打包后资源在 _MEIPASS/hidmaestro_bridge；源码运行时 _ROOT 是
-        # _src/virtual/，桥接在它的上一级 _src/hidmaestro_bridge/。
-        base = pathlib.Path(getattr(sys, "_MEIPASS", None) or str(_ROOT.parent))
+        """返回 (bridge exe, profiles dir)。
+
+        ★ 打包版（onefile）必须把桥接文件复制到 _MEI 之外的固定目录再启动：
+          桥接是提权进程，主程序退出时 PyInstaller bootloader 会删 _MEI 临时
+          目录；若桥接还在里面运行，exe/dll 被占用 -> 删不掉 ->
+          「Failed to remove temporary directory: C:\\...\\_MEIxxxxxx」弹窗。
+          放到 exe 同目录的 bridge_runtime/，_MEI 就不再被占用。
+        """
+        meipass = getattr(sys, "_MEIPASS", None)
+        base = pathlib.Path(meipass or str(_ROOT.parent))
         # 源码运行：exe 在 hidmaestro_bridge/bin/；打包后：在 _MEIPASS/hidmaestro_bridge/
         exe = base / "hidmaestro_bridge" / "bin" / _BRIDGE_EXE
         if not exe.exists():
@@ -257,6 +264,26 @@ class HidMaestroJoyCon2:
         profiles = base / _PROFILES_DIR
         if not profiles.exists():
             profiles = base / "hidmaestro_bridge" / _PROFILES_DIR
+
+        if meipass:
+            # 打包模式：暂存到 exe 同目录的 bridge_runtime/
+            import shutil
+            from app_paths import app_dir
+            runtime = pathlib.Path(app_dir()) / "bridge_runtime"
+            runtime.mkdir(parents=True, exist_ok=True)
+            for name in (_BRIDGE_EXE, "HmBridge.dll", "HmBridge.deps.json",
+                         "HmBridge.runtimeconfig.json", "HIDMaestro.Core.dll"):
+                src = exe.parent / name
+                if src.exists():
+                    dst = runtime / name
+                    # 只在缺失或变化时复制（避免每次启动写盘；版本变化靠大小+时间）
+                    if not dst.exists() or dst.stat().st_size != src.stat().st_size:
+                        shutil.copy2(str(src), str(dst))
+            dst_profiles = runtime / "profiles"
+            if profiles.exists() and not dst_profiles.exists():
+                shutil.copytree(str(profiles), str(dst_profiles))
+            return str(runtime / _BRIDGE_EXE), str(dst_profiles)
+
         return str(exe), str(profiles)
 
     def _ensure(self) -> bool:
@@ -554,11 +581,17 @@ class HidMaestroJoyCon2:
 
     def close(self) -> None:
         self._stop = True
+        # 让桥接自己正常退出（QUIT -> Environment.Exit(0)），等它释放
+        # exe/dll 句柄。相比 taskkill，这样不会因"非提权杀不掉提权进程"
+        # 而留下残留占用文件。
         try:
             self._send("QUIT")
+            self._read_reply(0.6)
         except Exception:
             pass
         self._close()
+        # 兜底：非提权 taskkill（能杀则杀，杀不掉也无妨——桥接已在
+        # bridge_runtime/ 而非 _MEI，不占用 PyInstaller 临时目录）。
         try:
             run_hidden(["taskkill", "/F", "/IM", _BRIDGE_EXE], timeout=8)
         except Exception:

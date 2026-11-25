@@ -531,6 +531,30 @@ class ControllerPairTab(QWidget):
         row3 = QHBoxLayout()
         row3.addWidget(self.calib_btn)
         row3.addWidget(self.disconnect_btn)
+        # ★ 输出模式选择（原生 JC2 / 充电握把 / 旧 JoyCon1），即时写配置
+        row4 = QHBoxLayout()
+        self.output_mode_combo = QComboBox()
+        self.output_mode_combo.addItem(tr("🎮 原生 Joy-Con 2 (2067/2066)"), "hidmaestro")
+        self.output_mode_combo.addItem(tr("🕹 充电握把 (200E, 功能全)"), "grip")
+        self.output_mode_combo.addItem(tr("📼 虚拟 Joy-Con 1 (旧版)"), "joycon1")
+        self.output_mode_combo.setStyleSheet(
+            "QComboBox { background:#f7c5db; color:#5c2340; border:1px solid #f3a8c9;"
+            " border-radius:5px; padding:8px; }"
+            "QComboBox:hover { background:#ffd9e9; }")
+        self.output_mode_combo.currentIndexChanged.connect(self.on_output_mode_changed)
+        row4.addWidget(self.output_mode_combo)
+        # 同步当前配置值（阻塞信号，避免初始化时误触发写回）
+        try:
+            from config import Config
+            _cur = str(Config().getConfig().get("output_mode", "hidmaestro")).strip().lower()
+            _idx = self.output_mode_combo.findData(_cur)
+            if _idx < 0:
+                _idx = 0
+            self.output_mode_combo.blockSignals(True)
+            self.output_mode_combo.setCurrentIndex(_idx)
+            self.output_mode_combo.blockSignals(False)
+        except Exception:
+            pass
         btns = QWidget()
         bl = QVBoxLayout(btns)
         bl.setContentsMargins(0, 0, 0, 0)
@@ -538,6 +562,7 @@ class ControllerPairTab(QWidget):
         bl.addLayout(row1)
         bl.addLayout(row2)
         bl.addLayout(row3)
+        bl.addLayout(row4)
         self._btn_bar = btns
         layout.addWidget(btns)
         self._refresh_connect_mode()
@@ -1583,6 +1608,26 @@ class Joy2WinGUI(QMainWindow):
         if reason == QSystemTrayIcon.DoubleClick:
             self.show_and_raise()
 
+    def on_output_mode_changed(self, index: int):
+        """切换输出模式：写配置 + 提示重启（设备形态只能在启动时建）。"""
+        mode = self.output_mode_combo.itemData(index)
+        if not mode:
+            return
+        try:
+            from config import Config
+            Config().set_output_mode(mode)
+        except Exception as e:  # noqa: BLE001
+            warning(f"保存输出模式失败: {type(e).__name__}: {e}")
+            return
+        names = {
+            "hidmaestro": tr("原生 Joy-Con 2 (2067/2066)"),
+            "grip": tr("充电握把 (200E)"),
+            "joycon1": tr("虚拟 Joy-Con 1"),
+        }
+        QMessageBox.information(
+            self, tr("输出模式已切换"),
+            tr("已切换到：%s\n\n请完全退出程序后重新启动，新的手柄形态才会生效。") % names.get(mode, mode))
+
     def quit_application(self):
         """真正退出应用程序（不弹确认，干净利落）。"""
         # Stop the status timer
@@ -1602,10 +1647,23 @@ class Joy2WinGUI(QMainWindow):
         except Exception as e:  # noqa: BLE001
             warning(f"退出清理失败: {type(e).__name__}: {e}")
 
-        # Force exit immediately
-        info("Force exiting...")
-        import os
-        os._exit(0)
+        # 让 Qt 事件循环正常结束，而不是 os._exit(0)。
+        # ★ os._exit 会绕过 Python 正常关闭流程，PyInstaller onefile 的
+        #   bootloader 因此无法清理 _MEI 临时目录，每次退出都弹
+        #   "Failed to remove temporary directory: C:\...\_MEIxxxxxx"。
+        #   走 quit() 让解释器正常退出，bootloader 就能删掉 _MEI。
+        info("Exiting...")
+        try:
+            from PySide6.QtCore import QTimer
+            app = QApplication.instance()
+            if app is not None:
+                QTimer.singleShot(0, app.quit)
+            else:
+                raise RuntimeError("no QApplication")
+        except Exception:
+            # 兜底：真拿不到 QApplication 才用 os._exit
+            import os
+            os._exit(0)
 
     def add_controller_separate(self, pair_id: int):
         """1.1 分开连接：让用户在对话框里手动选左/右，逐个连接并记忆。"""
@@ -1938,8 +1996,8 @@ def main():
     # ── Windows 控制台/注销/关机事件兜底 ──
     #
     # 为什么还需要这一层：
-    #   quit_application() 末尾是 `os._exit(0)` —— 它**不执行 atexit**。
-    #   所以 atexit 只在没走 quit_application 时才生效。
+    #   quit_application() 现在走 QApplication.quit()（正常退出），
+    #   atexit 也会执行；这里保留 console handler 作为强杀/关机的兜底。
     #   而 SetConsoleCtrlHandler 能在这些情况下拿到回调：
     #     · 窗口被任务管理器结束
     #     · 用户注销 / 关机
