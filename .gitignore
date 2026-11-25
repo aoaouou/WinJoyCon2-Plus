@@ -9,6 +9,7 @@ WinJoyCon2-Plus.exe
 # Build intermediates
 build/
 buildout/
+bridge_runtime/
 dist*/
 obj/
 *.pyc

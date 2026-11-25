@@ -98,6 +98,59 @@ class ControllerManager:
                 led_player=i + 1
             )
 
+    def switch_output_mode(self, mode: str) -> None:
+        """热切换输出模式：关掉每对旧的虚拟设备，立即按新模式重建。
+
+        蓝牙连接（pair.left/right 的 client）保持不动，只重建输出层
+        （pair.gamepad）。这样用户在 GUI 下拉框切换后立即生效，无需重启。
+        """
+        mode = str(mode).strip().lower()
+        # 先关掉所有 pair 的旧输出设备
+        for pair in self.pairs.values():
+            gp = pair.gamepad
+            if gp is None:
+                continue
+            try:
+                close = getattr(gp, "close", None)
+                if callable(close):
+                    close()
+            except Exception as exc:  # noqa: BLE001
+                _lg_error(f"关闭旧输出设备失败: {exc}")
+            pair.gamepad = None
+
+        # HIDMaestro 的 bridge 是提权的全局单实例（TCP 3250）。非提权的
+        # taskkill 杀不掉它，必须提权杀，否则新模式因 identity key 冲突
+        # 启动失败。然后清幽灵节点，让新模式从干净状态建设备。
+        if mode in ("hidmaestro", "jc2", "jc2native", "grip"):
+            try:
+                from hidden_exec import run_hidden
+                run_hidden(
+                    ["powershell", "-NoProfile", "-Command",
+                     "Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden "
+                     "-ArgumentList '-NoProfile','-Command',\"taskkill /F /IM HmBridge.exe 2>$null\""],
+                    timeout=30,
+                )
+            except Exception as exc:  # noqa: BLE001
+                _lg_error(f"提权关闭旧桥接失败: {exc}")
+            try:
+                from device_cleanup import remove_ghosts_elevated
+                import time
+                for _ in range(5):
+                    if remove_ghosts_elevated() == 0:
+                        break
+                    time.sleep(1)
+            except Exception as exc:  # noqa: BLE001
+                _lg_error(f"切换前清理设备失败: {exc}")
+
+        # 对活跃的 pair 立即按新模式重建输出层
+        for pair in self.pairs.values():
+            if not pair.is_active():
+                continue
+            try:
+                self._ensure_gamepad(pair)
+            except Exception as exc:  # noqa: BLE001
+                _lg_error(f"热切换重建输出失败(pair {pair.pair_id}): {exc}")
+
     @staticmethod
     def _ensure_gamepad(pair: ControllerPair):
         # ---- 已经是虚拟 Joy-Con 1：可能需要在右侧补齐设备 ----
