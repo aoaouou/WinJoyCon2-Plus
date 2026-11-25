@@ -51,7 +51,12 @@ BRIDGE_PORT = 3250
 _BRIDGE_EXE = "HmBridge.exe"
 _PROFILES_DIR = "hidmaestro_profiles"
 
-# ---- HMButton 位掩码（HIDMaestro.HMButton 枚举实测值）----
+# ---- HIDMaestro 的按钮位掩码（VendorBlobProgram.cs:98-114，64 位）----
+# 普通按钮在 HMButton 的 32 位掩码空间内；LT_DIGITAL / RT_DIGITAL 与四个
+# D-pad 方向是**独立的 sentinel 位**，在 32 位之上（bit 32..37）。
+#
+# ★ 之前这里用 32 位掩码，且把 D-pad 写成 1<<3（那其实是 Y 键）：D-pad 按下
+#   会变成 Y，扳机位根本装不下 —— 表现就是「按键全无反应」。
 _HM_A = 1 << 0
 _HM_B = 1 << 1
 _HM_X = 1 << 2
@@ -64,15 +69,21 @@ _HM_LEFT_STICK = 1 << 8
 _HM_RIGHT_STICK = 1 << 9
 _HM_GUIDE = 1 << 10
 _HM_SHARE = 1 << 12
-_HM_LEFT_PADDLE = 1 << 14
 _HM_RIGHT_PADDLE = 1 << 13
+_HM_LEFT_PADDLE = 1 << 14
 _HM_MISC1 = 1 << 15
 _HM_LEFT_TRIGGER = 1 << 23
 _HM_RIGHT_TRIGGER = 1 << 24
+_HM_LT_DIGITAL = 1 << 32
+_HM_RT_DIGITAL = 1 << 33
+_HM_DPAD_UP = 1 << 34
+_HM_DPAD_DOWN = 1 << 35
+_HM_DPAD_LEFT = 1 << 36
+_HM_DPAD_RIGHT = 1 << 37
 
-# Ns2Bit → HMButton。左右半的 mini 报告位表不同，但 SDK 状态块用统一语义，
-# 这里按「按键语义」映射（与 profile 的 mini 位表一致，SDL/浏览器读到同一组键）。
+
 def _ns2_to_hm(bits: int, side: str) -> int:
+    """Ns2Bit -> HIDMaestro 的 64 位按钮掩码。"""
     from virtual.reports import Ns2Bit
     b = int(bits)
     hm = 0
@@ -89,9 +100,9 @@ def _ns2_to_hm(bits: int, side: str) -> int:
     if b & Ns2Bit.R:
         hm |= _HM_RIGHT_BUMPER
     if b & Ns2Bit.ZL:
-        hm |= _HM_LEFT_TRIGGER
+        hm |= _HM_LEFT_TRIGGER | _HM_LT_DIGITAL
     if b & Ns2Bit.ZR:
-        hm |= _HM_RIGHT_TRIGGER
+        hm |= _HM_RIGHT_TRIGGER | _HM_RT_DIGITAL
     if b & Ns2Bit.PLUS:
         hm |= _HM_START
     if b & Ns2Bit.MINUS:
@@ -105,13 +116,13 @@ def _ns2_to_hm(bits: int, side: str) -> int:
     if b & Ns2Bit.CAPTURE:
         hm |= _HM_SHARE
     if b & Ns2Bit.UP:
-        hm |= 1 << 3
+        hm |= _HM_DPAD_UP
     if b & Ns2Bit.DOWN:
-        hm |= 1 << 0
+        hm |= _HM_DPAD_DOWN
     if b & Ns2Bit.LEFT:
-        hm |= 1 << 2
+        hm |= _HM_DPAD_LEFT
     if b & Ns2Bit.RIGHT:
-        hm |= 1 << 1
+        hm |= _HM_DPAD_RIGHT
     if b & Ns2Bit.SL_L:
         hm |= _HM_LEFT_PADDLE
     if b & Ns2Bit.SR_L:
@@ -122,7 +133,7 @@ def _ns2_to_hm(bits: int, side: str) -> int:
         hm |= _HM_RIGHT_PADDLE
     if b & Ns2Bit.C:
         hm |= _HM_MISC1
-    return hm & 0xFFFFFFFF
+    return hm & 0xFFFFFFFFFFFFFFFF
 
 
 class HidMaestroJoyCon2:

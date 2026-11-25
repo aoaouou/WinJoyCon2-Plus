@@ -60,6 +60,12 @@ internal static class Program
         public MethodInfo Submit = null!;
         public object State = null!;
         public System.Collections.IDictionary Axes = null!;
+        // The profile's stick axes (HMAxis), so we can write the right
+        // HMAxis for the half this device represents.
+        public object LeftXAxis = null!;
+        public object LeftYAxis = null!;
+        public object RightXAxis = null!;
+        public object RightYAxis = null!;
         public uint Buttons;
         public readonly object Lock = new();
         // last rumble values, forwarded to subscribers
@@ -219,10 +225,15 @@ internal static class Program
         var issues = (System.Collections.IEnumerable)_ctxType.GetProperty("ProfileLoadIssues")!.GetValue(_ctx)!;
         foreach (var i in issues.Cast<object>()) Console.Error.WriteLine("profile issue: " + i);
 
+        // 真机原版握把 profile：逐字节来自真机抓包（linux-hardware.org probe
+        // 5c2a36d024 + dekuNukem issue 7 的 usbmon + shinyquagsire23 的 rdesc）。
+        // SDL 会把这两只握把槽里的 JC 自动组合成一只 Joy-Con (L/R)；
+        // 用户在 Steam 里关掉「组合手柄」即得到两只独立的 Joy-Con (L)/(R)。
+        // 实测：所有按键与双摇杆均有数据，位序与真机一致。
         foreach (var (side, profileId) in new[]
         {
-            ("L", "switch2-joycon-left"),
-            ("R", "switch2-joycon-right"),
+            ("L", "joycon-l-usb"),
+            ("R", "joycon-r-usb"),
         })
         {
             var prof = _getProfile.Invoke(_ctx, new object[] { profileId });
@@ -240,11 +251,41 @@ internal static class Program
                 Axes = (System.Collections.IDictionary)Activator.CreateInstance(_axesDictType)!,
             };
 
+            // Which HMAxis carries this half's stick. The profile's Sticks
+            // come from the HID descriptor, not from the JSON layout: the
+            // real charging-grip descriptor is the Switch 1 Pro one, so it
+            // declares X/Y (left stick) and Rx/Rz (right stick). The left
+            // half writes X/Y, the right half writes Rx/Rz.
+            var sticks = (System.Collections.IEnumerable)_profileType.GetProperty("Sticks")!.GetValue(prof)!;
+            var stickList = sticks.Cast<object>().ToList();
+            void AxisOf(object stick, string prop, ref object slot)
+            {
+                slot = stick.GetType().GetProperty(prop)!.GetValue(stick)!;
+            }
+            if (stickList.Count >= 1)
+            {
+                if (side == "L")
+                {
+                    AxisOf(stickList[0], "XAxis", ref dev.LeftXAxis);
+                    AxisOf(stickList[0], "YAxis", ref dev.LeftYAxis);
+                }
+                else
+                {
+                    // The right half's own stick is the second one when the
+                    // descriptor declares both; fall back to the first.
+                    var s = stickList.Count >= 2 ? stickList[1] : stickList[0];
+                    AxisOf(s, "XAxis", ref dev.RightXAxis);
+                    AxisOf(s, "YAxis", ref dev.RightYAxis);
+                }
+            }
+            if (dev.LeftXAxis == null) { dev.LeftXAxis = Enum.Parse(_axisType, "X"); dev.LeftYAxis = Enum.Parse(_axisType, "Y"); }
+            if (dev.RightXAxis == null) { dev.RightXAxis = Enum.Parse(_axisType, "Rx"); dev.RightYAxis = Enum.Parse(_axisType, "Rz"); }
+
             // neutral axes; Y inverted so SDK 0.5 == wire center
-            dev.Axes.Add(Enum.Parse(_axisType, "X"), 0.5f);
-            dev.Axes.Add(Enum.Parse(_axisType, "Y"), 0.5f);
-            dev.Axes.Add(Enum.Parse(_axisType, "Rx"), 0.5f);
-            dev.Axes.Add(Enum.Parse(_axisType, "Ry"), 0.5f);
+            dev.Axes.Add(dev.LeftXAxis, 0.5f);
+            dev.Axes.Add(dev.LeftYAxis, 0.5f);
+            dev.Axes.Add(dev.RightXAxis, 0.5f);
+            dev.Axes.Add(dev.RightYAxis, 0.5f);
             dev.State = Activator.CreateInstance(_stateType)!;
             _stateType.GetField("Axes")!.SetValue(dev.State, dev.Axes);
             _stateType.GetField("Buttons")!.SetValue(dev.State, Enum.ToObject(_btnType, 0u));
@@ -337,10 +378,19 @@ internal static class Program
                 dev.Buttons = buttons;
                 _stateType.GetField("Buttons")!.SetValue(dev.State, Enum.ToObject(_btnType, buttons));
                 var axes = dev.Axes;
-                axes[Enum.Parse(_axisType, "X")] = Norm(lx);
-                axes[Enum.Parse(_axisType, "Y")] = 1f - Norm(ly);
-                axes[Enum.Parse(_axisType, "Rx")] = Norm(rx);
-                axes[Enum.Parse(_axisType, "Ry")] = 1f - Norm(ry);
+                // Each half only carries its own stick: the left half writes
+                // the left stick axes, the right half the right ones. The
+                // other pair stays at center.
+                if (dev.Side == "L")
+                {
+                    axes[dev.LeftXAxis] = Norm(lx);
+                    axes[dev.LeftYAxis] = 1f - Norm(ly);
+                }
+                else
+                {
+                    axes[dev.RightXAxis] = Norm(rx);
+                    axes[dev.RightYAxis] = 1f - Norm(ry);
+                }
                 dev.Submit.Invoke(dev.Ctrl, new object[] { dev.State });
             }
         }
