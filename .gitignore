@@ -8,6 +8,7 @@ WinJoyCon2-Plus.exe
 
 # Build intermediates
 build/
+buildout/
 dist*/
 obj/
 *.pyc
