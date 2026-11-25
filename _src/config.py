@@ -36,9 +36,11 @@ class Config:
         "srl_mapping": "",      # SR Left mapping (empty = unmapped)
         "slr_mapping": "",      # SL Right mapping (empty = unmapped)
         "srr_mapping": "",      # SR Right mapping (empty = unmapped)
-        # 输出模式：xgip = 虚拟 Xbox 360（原版行为）
-        #           joycon1 = 虚拟 Joy-Con 1（057E:2006 / 057E:2007）
-        "output_mode": "joycon1",
+        # 输出模式：
+        #   hidmaestro = 原生 Joy-Con 2（057E:2067 L / 2066 R，HIDMaestro）—— 默认
+        #   joycon1    = 虚拟 Joy-Con 1（057E:2006 / 2007，USB/IP）—— 旧路径，保留
+        #   xgip       = 虚拟 Xbox 360（原版行为）
+        "output_mode": "hidmaestro",
     }
 
     def __new__(cls, config_path=_cfg_path()):

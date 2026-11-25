@@ -185,6 +185,15 @@ def remove_ghosts_elevated() -> int:
 
 def cleanup_on_exit() -> None:
     """退出时调用。任何失败都不影响退出。"""
+    # ★ HmBridge（原生 JC2 后端）是独立的管理员进程，必须先杀：
+    #   它持有 HIDMaestro 的 device identity lease 和虚拟设备节点，
+    #   不杀会以幽灵节点残留。放在最前，避免被后面的 return 跳过。
+    try:
+        from hidden_exec import run_hidden
+        run_hidden(["taskkill", "/F", "/IM", "HmBridge.exe"], timeout=8)
+    except Exception:
+        pass
+
     try:
         n = detach_all_usbip()
         if n:

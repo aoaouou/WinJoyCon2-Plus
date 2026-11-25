@@ -68,7 +68,7 @@ def validate_config_file(config_path=_cfg_path()):
         "Controller": {
             "controller": "0", "led_player": "1",
             "save_mac_address": "0", "enable_dsu": "0", "mouse_mode": "0",
-            "output_mode": "joycon1",
+            "output_mode": "hidmaestro",
         },
         "Bluetooth": {"mac_address": ""},
     }

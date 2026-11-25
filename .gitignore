@@ -8,9 +8,10 @@ WinJoyCon2-Plus.exe
 
 # Build intermediates
 build/
-dist/
-*.spec
+dist*/
 *.pyc
+*.pdb
+# WinJoyCon2-Plus.spec is build source — keep it tracked
 __pycache__/
 
 # Runtime logs

@@ -110,11 +110,26 @@ class ControllerManager:
                 )
             return
 
-        # ---- 输出层：只做虚拟 Joy-Con 1（USB/IP 057E:2006 / 057E:2007）----
-        #
+        # ---- 输出层 ----
         # 接口与 VX360Gamepad 完全一致，所以上层 press_button /
         # left_joystick / update 一行都不用改。
+        #   output_mode = joycon1（默认）：虚拟 Joy-Con 1（057E:2006/2007，USB/IP）
+        #   output_mode = hidmaestro：原生 Joy-Con 2（057E:2067/2066，HIDMaestro）
         try:
+            from config import Config
+            mode = str(Config().getConfig().get("output_mode", "joycon1")).strip().lower()
+        except Exception:
+            mode = "joycon1"
+
+        try:
+            if mode == "hidmaestro":
+                from virtual.hidmaestro_out import HidMaestroJoyCon2
+                pair.gamepad_side = "both"
+                pair.gamepad = HidMaestroJoyCon2(side="both")
+                _lg_info("输出：原生 Joy-Con 2（HIDMaestro）")
+                print("[输出] 原生 Joy-Con 2（HIDMaestro）", flush=True)
+                return
+
             from virtual.vjoy_out import VirtualJoyCon1
             # 这只 pair 当前接的是哪一侧：只接右手就建右手柄，
             # 两只都接（双持）就建两只。
@@ -132,8 +147,8 @@ class ControllerManager:
             print(f"[输出] 虚拟 Joy-Con 1（{side}）", flush=True)
             return
         except Exception as exc:  # noqa: BLE001
-            _lg_error(f"虚拟 Joy-Con 1 初始化失败: {exc}")
-            print(f"[输出] Joy-Con 1 初始化失败: {exc}", flush=True)
+            _lg_error(f"输出设备初始化失败: {exc}")
+            print(f"[输出] 初始化失败: {exc}", flush=True)
             raise
     
     def register_callback(self, callback: Callable):

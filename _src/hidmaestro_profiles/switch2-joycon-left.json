@@ -1,0 +1,406 @@
+{
+ "id": "switch2-joycon-left",
+ "name": "Nintendo Switch 2 Joy-Con (L)",
+ "vendor": "Nintendo",
+ "vid": "0x057E",
+ "pid": "0x2067",
+ "productString": "Joy-Con 2 (L)",
+ "manufacturerString": "Nintendo Co., Ltd.",
+ "type": "gamepad",
+ "connection": "usb",
+ "descriptor": "05010905a101850505ff0901150026ff00953f750881028507090195028102050919012910250195107501810205ff090126ff0095017508810205010901a1000930093126ff0f9502750c8102c005ff090226ff0095377508810285010901953f9102c0",
+ "inputReportSize": 64,
+ "extendedReport": {
+  "reportId": "0x07",
+  "size": 64,
+  "alwaysArmed": true,
+  "fields": [
+   {
+    "byte": 1,
+    "type": "uint8-rolling",
+    "semantic": "sequenceNum",
+    "initial": 0
+   },
+   {
+    "byte": 2,
+    "type": "uint8",
+    "semantic": "powerInfo",
+    "initial": 37
+   },
+   {
+    "byte": 3,
+    "type": "button-mask",
+    "buttons": [
+     "DPAD_DOWN",
+     "DPAD_RIGHT",
+     "DPAD_LEFT",
+     "DPAD_UP",
+     "LeftBumper",
+     "LT_DIGITAL",
+     "Back",
+     "LeftStick"
+    ]
+   },
+   {
+    "byte": 4,
+    "type": "button-mask",
+    "buttons": [
+     "Share",
+     "_",
+     "_",
+     "_",
+     "_",
+     "_",
+     "RightPaddle",
+     "LeftPaddle"
+    ]
+   },
+   {
+    "byte": 6,
+    "type": "stick12-pair",
+    "semantic": "leftStick"
+   },
+   {
+    "byte": 9,
+    "type": "stick12-pair",
+    "semantic": "rightStick"
+   }
+  ]
+ },
+ "layout": {
+  "kind": "gamepad",
+  "source": "Nintendo Switch 2 Joy-Con 2 real-device capture",
+  "sticks": [
+   {
+    "side": "left",
+    "xAxis": "X",
+    "yAxis": "Y",
+    "clickButton": 7
+   }
+  ],
+  "triggers": [
+   {
+    "axis": null,
+    "side": "left",
+    "kind": "digital"
+   },
+   {
+    "axis": null,
+    "side": "right",
+    "kind": "digital"
+   }
+  ],
+  "dpad": {
+   "encoding": "buttons",
+   "upButton": 3,
+   "downButton": 0,
+   "leftButton": 2,
+   "rightButton": 1
+  },
+  "faceButtons": [
+   {
+    "role": "face_b",
+    "buttonIndex": 12
+   },
+   {
+    "role": "face_a",
+    "buttonIndex": 10
+   },
+   {
+    "role": "face_y",
+    "buttonIndex": 14
+   },
+   {
+    "role": "face_x",
+    "buttonIndex": 15
+   }
+  ],
+  "shoulderButtons": [
+   {
+    "role": "left_bumper",
+    "buttonIndex": 13
+   },
+   {
+    "role": "right_bumper",
+    "buttonIndex": 9
+   },
+   {
+    "role": "left_trigger_click",
+    "buttonIndex": 5
+   },
+   {
+    "role": "right_trigger_click",
+    "buttonIndex": 4
+   }
+  ],
+  "systemButtons": [
+   {
+    "role": "start",
+    "buttonIndex": 0
+   },
+   {
+    "role": "back",
+    "buttonIndex": 15
+   },
+   {
+    "role": "home",
+    "buttonIndex": 11
+   },
+   {
+    "role": "capture",
+    "buttonIndex": 8
+   }
+  ],
+  "haptics": {
+   "rumble": "None"
+  },
+  "imu": {
+   "accelerometer": true,
+   "gyroscope": true,
+   "magnetometer": false
+  }
+ },
+ "axisMap": {
+  "0x30": "leftStickX",
+  "0x31": "leftStickY"
+ },
+ "sdlMapping": "a:b10,b:b12,x:b15,y:b14,leftshoulder:b13,rightshoulder:b9,back:b16,start:b0,guide:b11,leftstick:b11,rightstick:b15,dpup:b3,dpdown:b0,dpleft:b2,dpright:b1,leftx:a0,lefty:a1,lefttrigger:b5,righttrigger:b4,paddle1:b14,paddle2:b15,hint:!SDL_GAMECONTROLLER_USE_BUTTON_LABELS:=1,platform:Windows,",
+ "stateBlock": {
+  "size": 24,
+  "fields": [
+   {
+    "byte": 0,
+    "type": "button-mask",
+    "buttons": [
+     "Start",
+     "_",
+     "_",
+     "LeftStick",
+     "Share",
+     "Guide",
+     "_",
+     "_"
+    ]
+   },
+   {
+    "byte": 1,
+    "type": "button-mask",
+    "buttons": [
+     "B",
+     "Y",
+     "A",
+     "X",
+     "RightBumper",
+     "LeftBumper",
+     "RightPaddle2",
+     "LeftPaddle2"
+    ]
+   },
+   {
+    "byte": 2,
+    "type": "button-mask",
+    "buttons": [
+     "DPAD_DOWN",
+     "DPAD_RIGHT",
+     "DPAD_LEFT",
+     "DPAD_UP",
+     "LeftBumper",
+     "LT_DIGITAL",
+     "Back",
+     "LeftStick"
+    ]
+   },
+   {
+    "byte": 3,
+    "type": "button-mask",
+    "buttons": [
+     "Share",
+     "_",
+     "_",
+     "_",
+     "_",
+     "_",
+     "RightPaddle",
+     "LeftPaddle"
+    ]
+   },
+   {
+    "byte": 4,
+    "type": "int16-axis",
+    "semantic": "leftStickX",
+    "min": 0,
+    "max": 4095
+   },
+   {
+    "byte": 6,
+    "type": "int16-axis",
+    "semantic": "leftStickY",
+    "min": 0,
+    "max": 4095,
+    "invert": true
+   },
+   {
+    "byte": 8,
+    "type": "int16-axis",
+    "semantic": "rightStickX",
+    "min": 0,
+    "max": 4095
+   },
+   {
+    "byte": 10,
+    "type": "int16-axis",
+    "semantic": "rightStickY",
+    "min": 0,
+    "max": 4095,
+    "invert": true
+   },
+   {
+    "byte": 12,
+    "type": "int16-le",
+    "semantic": "accelGX",
+    "scale": [
+     4096,
+     2
+    ]
+   },
+   {
+    "byte": 14,
+    "type": "int16-le",
+    "semantic": "accelGY",
+    "scale": [
+     4096,
+     2
+    ]
+   },
+   {
+    "byte": 16,
+    "type": "int16-le",
+    "semantic": "accelGZ",
+    "scale": [
+     4096,
+     2
+    ]
+   },
+   {
+    "byte": 18,
+    "type": "int16-le",
+    "semantic": "gyroDpsX",
+    "scale": 16.433679195430518
+   },
+   {
+    "byte": 20,
+    "type": "int16-le",
+    "semantic": "gyroDpsY",
+    "scale": 16.433679195430518
+   },
+   {
+    "byte": 22,
+    "type": "int16-le",
+    "semantic": "gyroDpsZ",
+    "scale": 16.433679195430518
+   }
+  ]
+ },
+ "inputReports": [
+  {
+   "name": "mini",
+   "reportId": "0x07",
+   "size": 64,
+   "send": "clock",
+   "program": [
+    {
+     "const": {
+      "0": "07",
+      "2": "25",
+      "5": "07"
+     }
+    },
+    {
+     "counter": "reportsSent",
+     "at": 1,
+     "width": 8
+    },
+    {
+     "pack12": [
+      4,
+      6
+     ],
+     "to": 6
+    },
+    {
+     "copy": "2-3",
+     "to": 3
+    }
+   ]
+  },
+  {
+   "name": "common",
+   "reportId": "0x05",
+   "size": 64,
+   "send": "clock",
+   "program": [
+    {
+     "const": {
+      "0": "05",
+      "2": "25"
+     }
+    },
+    {
+     "counter": "reportsSent",
+     "at": 1,
+     "width": 32,
+     "scale": 4
+    },
+    {
+     "copy": "0-1",
+     "to": 6
+    },
+    {
+     "pack12": [
+      4,
+      6
+     ],
+     "to": 11
+    },
+    {
+     "pack12": [
+      8,
+      10
+     ],
+     "to": 14
+    },
+    {
+     "copy": "12-23",
+     "to": 43
+    }
+   ]
+  }
+ ],
+ "protocol": {
+  "state": [
+   {
+    "name": "featureMask",
+    "bits": 8
+   },
+   {
+    "name": "featureEnabled",
+    "bits": 8
+   }
+  ],
+  "counters": [
+   {
+    "name": "reportsSent",
+    "bits": 32,
+    "on": "report"
+   }
+  ],
+  "input": {
+   "clock": {
+    "periodMs": 4,
+    "origin": "inputOpened",
+    "missedTick": "owe"
+   }
+  }
+ },
+ "notes": "Joy-Con 2 (L/R) of Nintendo Switch 2 over USB. The HID report descriptor is the real device's 100 bytes, byte for byte, from switch2_controller_research (descriptors.md, Joy-Con 2 (L)); the right half differs only in Report ID (8 instead of 7). Two input reports are built from the 24-byte state block. 0x05, the common report, carries the counter, the buttons at data[6]/data[7], both 12-bit packed sticks at data[11:14]/data[14:17] and the Motion Data block at data[0x2B:] — the offsets SDL's switch2 driver reads (SDL_hidapi_switch2.c HandleMiniControllerStateL and the sensor block of HandleSwitchProState). 0x07/0x08, the structured report, carries the buttons at data[3:5] in the real device's Button Format order and the stick at data[6:9], so the plain HID path (browser Gamepad API, DirectInput, Windows GameInput) can parse the Button usages the descriptor declares. No vendor interface and no command protocol: the device streams reports from the first frame."
+}
