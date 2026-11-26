@@ -399,32 +399,54 @@ mouse = Controller()
 
 
 def _screen_size():
-    """取主屏幕像素尺寸。
+    """取**当前主屏**的像素尺寸（自适应任意分辨率/缩放）。
 
-    ★ 不能用 pynput 的 Controller.size —— 该对象**没有 size 属性**
-      （实测 AttributeError），旧实现里异常被 except 吞掉，导致
-      "回中心"静默失效。改用 Win32 GetSystemMetrics，零依赖。
+    ★ 必须动态取，不能硬编码：用户屏幕可能是 2560x1600 / 1920x1080 / 4K。
+    ★ 不能用 pynput Controller.size —— 该对象没有 size 属性（实测
+      AttributeError），旧实现的异常被 except 吞掉，导致"回中心"静默失效。
+
+    取值优先级（先准后稳）：
+      1) Qt 的 primaryScreen —— 本程序是 Qt 应用，Qt 自己已处理 DPI 缩放，
+         拿到的一定是逻辑像素坐标系，与 pynput 的 position 一致。
+      2) Win32 GetSystemMetrics + SetProcessDPIAware —— 无 Qt 时回退。
+      3) 1920x1080 兜底（只为避免除零，不让功能崩）。
     """
+    # ① Qt：GUI 应用最可靠，且与 pynput 坐标系一致
+    try:
+        from PyQt5.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app is not None:
+            scr = app.primaryScreen()
+            if scr is not None:
+                g = scr.geometry()
+                if g.width() > 0 and g.height() > 0:
+                    return int(g.width()), int(g.height())
+    except Exception:
+        pass
+
+    # ② Win32（打开 DPI 感知后才是物理像素）
     try:
         import ctypes
         u = ctypes.windll.user32
-        u.SetProcessDPIAware()          # 高 DPI 下取真实像素
-        w = int(u.GetSystemMetrics(0))  # SM_CXSCREEN
-        h = int(u.GetSystemMetrics(1))  # SM_CYSCREEN
+        try:
+            u.SetProcessDPIAware()
+        except Exception:
+            pass
+        w = int(u.GetSystemMetrics(0))   # SM_CXSCREEN
+        h = int(u.GetSystemMetrics(1))   # SM_CYSCREEN
         if w > 0 and h > 0:
             return w, h
     except Exception:
         pass
-    return None
+
+    # ③ 兜底
+    return 1920, 1080
 
 
 def _center_cursor():
     """把光标移到主屏幕中心（陀螺仪长时间累计漂移后一键归位）。"""
-    size = _screen_size()
-    if not size:
-        return
-    w, h = size
     try:
+        w, h = _screen_size()
         mouse.position = (w // 2, h // 2)
     except Exception:
         pass

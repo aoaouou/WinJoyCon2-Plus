@@ -463,14 +463,30 @@ async def controller_traitement(joycon, side, data, pair_id: int):
             elif _a == mm.ACT_SCROLL_DOWN:
                 state['mouse'].scroll(0, -1)
             elif _a == mm.ACT_CENTER:
-                # pynput Controller 没有 size 属性（旧代码异常被吞 → 静默失效），
-                # 改用 Win32 GetSystemMetrics 取主屏尺寸。
+                # 回屏幕中心。尺寸必须动态取（自适应任意分辨率/缩放）：
+                #   ① Qt primaryScreen（GUI 应用最准，与 pynput 坐标系一致）
+                #   ② Win32 GetSystemMetrics + DPI 感知
+                #   ③ 1920x1080 兜底
+                # 不能用 pynput Controller.size —— 该对象没有该属性。
                 try:
-                    import ctypes
-                    u = ctypes.windll.user32
-                    u.SetProcessDPIAware()
-                    w = int(u.GetSystemMetrics(0))
-                    h = int(u.GetSystemMetrics(1))
+                    w = h = 0
+                    try:
+                        from PyQt5.QtWidgets import QApplication
+                        _app = QApplication.instance()
+                        if _app is not None and _app.primaryScreen() is not None:
+                            _g = _app.primaryScreen().geometry()
+                            w, h = int(_g.width()), int(_g.height())
+                    except Exception:
+                        w = h = 0
+                    if w <= 0 or h <= 0:
+                        import ctypes
+                        _u = ctypes.windll.user32
+                        try:
+                            _u.SetProcessDPIAware()
+                        except Exception:
+                            pass
+                        w = int(_u.GetSystemMetrics(0))
+                        h = int(_u.GetSystemMetrics(1))
                     if w > 0 and h > 0:
                         state['mouse'].position = (w // 2, h // 2)
                 except Exception:
