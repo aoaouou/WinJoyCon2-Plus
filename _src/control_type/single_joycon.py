@@ -463,9 +463,16 @@ async def controller_traitement(joycon, side, data, pair_id: int):
             elif _a == mm.ACT_SCROLL_DOWN:
                 state['mouse'].scroll(0, -1)
             elif _a == mm.ACT_CENTER:
+                # pynput Controller 没有 size 属性（旧代码异常被吞 → 静默失效），
+                # 改用 Win32 GetSystemMetrics 取主屏尺寸。
                 try:
-                    w, h = state['mouse'].size
-                    state['mouse'].position = (w // 2, h // 2)
+                    import ctypes
+                    u = ctypes.windll.user32
+                    u.SetProcessDPIAware()
+                    w = int(u.GetSystemMetrics(0))
+                    h = int(u.GetSystemMetrics(1))
+                    if w > 0 and h > 0:
+                        state['mouse'].position = (w // 2, h // 2)
                 except Exception:
                     pass
 

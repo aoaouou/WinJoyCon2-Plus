@@ -398,10 +398,33 @@ def mouse_loop():
 mouse = Controller()
 
 
+def _screen_size():
+    """取主屏幕像素尺寸。
+
+    ★ 不能用 pynput 的 Controller.size —— 该对象**没有 size 属性**
+      （实测 AttributeError），旧实现里异常被 except 吞掉，导致
+      "回中心"静默失效。改用 Win32 GetSystemMetrics，零依赖。
+    """
+    try:
+        import ctypes
+        u = ctypes.windll.user32
+        u.SetProcessDPIAware()          # 高 DPI 下取真实像素
+        w = int(u.GetSystemMetrics(0))  # SM_CXSCREEN
+        h = int(u.GetSystemMetrics(1))  # SM_CYSCREEN
+        if w > 0 and h > 0:
+            return w, h
+    except Exception:
+        pass
+    return None
+
+
 def _center_cursor():
     """把光标移到主屏幕中心（陀螺仪长时间累计漂移后一键归位）。"""
+    size = _screen_size()
+    if not size:
+        return
+    w, h = size
     try:
-        w, h = mouse.size
         mouse.position = (w // 2, h // 2)
     except Exception:
         pass
