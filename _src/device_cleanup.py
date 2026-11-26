@@ -69,6 +69,67 @@ def count_ghosts() -> int:
     return int(out) if out.isdigit() else 0
 
 
+# 本程序自己创建的虚拟设备 PID（独立 Joy-Con 1）。
+# 退出时必须全部移除：HmBridge 杀掉后这些节点已无后端，Windows 会反复
+# 枚举失败 —— 表现就是「手柄一直断连重连」。
+_OWN_PIDS = "2006|2007"
+
+
+def count_own_devices() -> int:
+    """统计本程序创建的虚拟设备节点数（不限状态）。"""
+    out = _run_ps(
+        "Get-PnpDevice -ErrorAction SilentlyContinue | "
+        f"Where-Object {{$_.InstanceId -match 'VID_057E&PID_({_OWN_PIDS})'}} | "
+        "Measure-Object | Select-Object -ExpandProperty Count"
+    )
+    out = out.strip()
+    return int(out) if out.isdigit() else 0
+
+
+def remove_own_devices_elevated() -> int:
+    """提权移除本程序创建的全部虚拟设备节点（不限状态）。
+
+    退出路径专用：进程要走了，这些设备必须从系统里消失，否则留下
+    "有节点、无后端"的空壳，Windows 反复枚举 → 断连重连。
+    返回移除后剩余数量；失败返回 -1。
+    """
+    import os
+    import tempfile
+
+    if count_own_devices() == 0:
+        return 0
+
+    script = (
+        "$n=0; "
+        "Get-PnpDevice -ErrorAction SilentlyContinue | "
+        f"Where-Object {{$_.InstanceId -match 'VID_057E&PID_({_OWN_PIDS})'}} | "
+        "ForEach-Object { pnputil /remove-device $_.InstanceId 2>$null | Out-Null; "
+        "if ($LASTEXITCODE -eq 0) { $n++ } }; "
+        "Write-Output $n"
+    )
+    path = None
+    try:
+        fd, path = tempfile.mkstemp(suffix=".ps1", text=True)
+        os.close(fd)
+        Path(path).write_text(script, encoding="utf-8-sig")
+        from hidden_exec import run_hidden
+        run_hidden(
+            ["powershell", "-NoProfile", "-Command",
+             f"Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden "
+             f"-ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','{path}'"],
+            timeout=120,
+        )
+        return count_own_devices()
+    except Exception:
+        return -1
+    finally:
+        if path:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+
+
 def _is_admin() -> bool:
     out = _run_ps(
         "([Security.Principal.WindowsPrincipal]"
@@ -150,6 +211,24 @@ def cleanup_on_exit() -> None:
         run_hidden(["taskkill", "/F", "/IM", "HmBridge.exe"], timeout=8)
     except Exception:
         pass
+
+    # ★★ 杀完 HmBridge 必须把自建虚拟设备节点也移除 ★★
+    # 之前只清 Status=Unknown 的"幽灵"，而活跃节点被跳过 —— 但 HmBridge
+    # 已死，那些节点其实是没有后端的空壳，Windows 会反复枚举失败，
+    # 表现就是「退出 Ryujinx 后手柄一直断连重连」。
+    # 退出路径下进程要走了，自建设备必须无条件移除。
+    try:
+        n = count_own_devices()
+        if n:
+            left = remove_own_devices_elevated()
+            if left == 0:
+                info(f"[清理] 已移除自建虚拟设备（原 {n} 个）")
+            elif left > 0:
+                warning(f"[清理] 仍有 {left} 个自建设备残留")
+            else:
+                warning(f"[清理] 提权未完成，{n} 个自建设备仍残留")
+    except Exception as e:
+        warning(f"[清理] 移除自建设备失败: {type(e).__name__}: {e}")
 
     try:
         # 先看有多少是 Unknown（真幽灵）——活跃设备不该动

@@ -201,6 +201,8 @@ class HidMaestroJoyCon2:
         self._proc: Optional[subprocess.Popen] = None
         self._started = False
         self._stop = False
+        self._ever_started = False
+        self._next_retry_at = 0.0
         self._failed = 0
         self._ensure()
 
@@ -262,15 +264,27 @@ class HidMaestroJoyCon2:
 
         return str(exe), str(profiles)
 
+    def _fail(self) -> None:
+        """初始化失败：首次永久放弃（避免反复弹 UAC）；重建时 5s 后重试。"""
+        if not getattr(self, "_ever_started", False):
+            self._init_failed = True
+        else:
+            self._init_failed = False
+            self._next_retry_at = time.time() + 5.0
+
     def _ensure(self) -> bool:
         if self._started:
             return True
         if getattr(self, "_init_failed", False):
             return False  # 失败只尝试一次，避免每帧提权重试
+        # 重建节流：链路断开后至少隔 2 秒再重建，防每帧提权。
+        import time as _t
+        if _t.time() < getattr(self, "_next_retry_at", 0.0):
+            return False
         exe, profiles = self._bridge_paths()
         if not pathlib.Path(exe).exists():
             log.error("HmBridge.exe 不存在: %s", exe)
-            self._init_failed = True
+            self._fail()
             return False
 
         # 杀旧实例（可能占用 identity key）。没有残留时 taskkill 会立刻返回，
@@ -304,7 +318,7 @@ class HidMaestroJoyCon2:
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as exc:
             log.error("启动 HmBridge 失败: %s", exc)
-            self._init_failed = True
+            self._fail()
             return False
         # 不再盲等 6 秒：轮询端口，一开就继续（典型 1.5~3s）。
         deadline = time.time() + 20.0
@@ -317,7 +331,7 @@ class HidMaestroJoyCon2:
                 time.sleep(0.15)
         if sock is None:
             log.error("HmBridge 端口未就绪（%s:%s）", BRIDGE_PORT, "127.0.0.1")
-            self._init_failed = True
+            self._fail()
             return False
 
         # 连接并 INIT
@@ -332,17 +346,18 @@ class HidMaestroJoyCon2:
             if not ok:
                 log.error("HmBridge INIT 失败")
                 self._close()
-                self._init_failed = True
+                self._fail()
                 return False
             self._send("SUB")
             self._read_reply(0.5)
         except Exception as exc:
             log.error("连接 HmBridge 失败: %s", exc)
             self._close()
-            self._init_failed = True
+            self._fail()
             return False
 
         self._started = True
+        self._ever_started = True
         self._stop = False
         self._read_thread = threading.Thread(target=self._reader, daemon=True)
         self._read_thread.start()
@@ -519,6 +534,20 @@ class HidMaestroJoyCon2:
                 continue
             except Exception:
                 break
+        # 链路断了（桥接被杀 / 端口关闭）：标记为未启动，让下一次
+        # update() 自动走 _ensure() 重建，避免"静默失效"（表现为
+        # 手柄一直断连重连但程序没报错）。
+        if not self._stop:
+            log.warning("HmBridge 链路断开，2s 后自动重建")
+            self._started = False
+            self._init_failed = False
+            self._next_retry_at = time.time() + 2.0
+            try:
+                if self._sock:
+                    self._sock.close()
+            except Exception:
+                pass
+            self._sock = None
 
     def _handle_line(self, line: str):
         if not line:
