@@ -78,19 +78,14 @@ internal static class Program
     static readonly List<StreamWriter> _subscribers = new();
     static readonly object _subLock = new();
     static string _profilesDir = "";
-    static string _profileSet = "grip";  // grip = 充电握把(200E)；jc2 = 独立 JC2(2067/2066)
 
     static int Main(string[] args)
     {
         // args[0] = profiles directory
-        // args[1] = profile set: "grip" (默认) 或 "jc2"
-        // args[2] = optional port override
+        // args[1] = optional port override（兼容旧调用：若非数字则忽略）
         _profilesDir = args.Length > 0 ? args[0] : AppContext.BaseDirectory;
-        if (args.Length > 1 && (args[1] == "grip" || args[1] == "jc2"))
-            _profileSet = args[1];
-        int portArg = args.Length > 2 ? 2 : 1;
+        int portArg = args.Length > 1 && int.TryParse(args[1], out _) ? 1 : 2;
         int port = args.Length > portArg && int.TryParse(args[portArg], out var p) ? p : Port;
-        Console.WriteLine($"profile set = {_profileSet}");
 
         string dll = Path.Combine(AppContext.BaseDirectory, "HIDMaestro.Core.dll");
         if (!File.Exists(dll))
@@ -242,23 +237,16 @@ internal static class Program
         var issues = (System.Collections.IEnumerable)_ctxType.GetProperty("ProfileLoadIssues")!.GetValue(_ctx)!;
         foreach (var i in issues.Cast<object>()) Console.Error.WriteLine("profile issue: " + i);
 
-        // 两种设备形态：
-        //   grip（默认）：真机原版充电握把 profile（057E:200E），逐字节来自
-        //     真机抓包（linux-hardware.org probe 5c2a36d024 + dekuNukem issue 7
-        //     usbmon + shinyquagsire23 rdesc）。SDL 组合/分开都正常，功能全。
-        //   jc2：真机 Joy-Con 2 profile（057E:2067/2066），100 字节真机描述符，
-        //     0x05/0x07/0x08 报告。身份是真 JC2，但按资料
-        //     (n-mwud4kmjni71 第七节) SDL 的 switch2 驱动需要 libusb 第二接口，
-        //     虚拟设备不可达 → 组合/陀螺仪/震动在 SDL 系不可用。
-        var profilePair = _profileSet == "jc2"
-            ? new[] { ("L", "switch2-joycon-left"), ("R", "switch2-joycon-right") }
-            : new[] { ("L", "joycon-l-usb"), ("R", "joycon-r-usb") };
+        // 唯一的输出形态：独立 Joy-Con 1（PID 2006/2007，真机 HID 描述符）。
+        // 平台自动把左右两只组合成一对，全平台兼容；按键/HD震动/陀螺仪
+        // 走 profile 的 0x30/0x3F 报告，与旧 USB/IP 方案功能一致。
+        var profilePair = new[] { ("L", "joycon-l"), ("R", "joycon-r") };
         foreach (var (side, profileId) in profilePair)
         {
             var prof = _getProfile.Invoke(_ctx, new object[] { profileId });
             if (prof == null) throw new Exception("profile missing: " + profileId);
 
-            string key = "jc2-" + side + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+            string key = "jc1-" + side + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
             var ctrl = _createController.Invoke(_ctx,
                 new object[] { prof, key, Enum.Parse(_backendType, "Usbip") })!;
 
@@ -447,6 +435,8 @@ internal static class Program
             lock (dev.Lock)
             {
                 var st = dev.State;
+                // 语义值直写：HIDMaestro profile 负责按 scale 填 wire。
+                // Python 侧传来的就是 g/dps（imu_semantic），不做反算补丁。
                 _stateType.GetField("AccelGX")?.SetValue(st, ax);
                 _stateType.GetField("AccelGY")?.SetValue(st, ay);
                 _stateType.GetField("AccelGZ")?.SetValue(st, az);

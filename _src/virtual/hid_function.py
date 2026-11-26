@@ -76,8 +76,7 @@ class Switch1HidFunction(UsbFunction):
                  period_ms: float = DEFAULT_PERIOD_MS):
         self.spec = spec
         self.kind = encoder_kind                 # "joyconL" / "joyconR"
-        # 本项目只模拟 Joy-Con 1（config output_mode=joycon1），
-        # Pro Controller 分支已删除 —— 它不属于本项目的模拟目标。
+        # 本项目只模拟 Joy-Con 1，Pro Controller 分支已删除。
         self.encoder = JoyConEncoder("L" if encoder_kind == "joyconL" else "R",
                                      D.JOYCON_INPUT_REPORT_SIZE)
         self.reply_len = D.JOYCON_INPUT_REPORT_SIZE

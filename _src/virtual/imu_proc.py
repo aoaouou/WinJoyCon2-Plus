@@ -122,7 +122,11 @@ def load_imu_compat_mode():
 
 
 def imu(side, raw6):
-    """(ax,ay,az,gx,gy,gz) JC2 原始值 -> JC1 报告 6 元组。"""
+    """(ax,ay,az,gx,gy,gz) JC2 原始值 -> JC1 报告 6 元组。
+
+    ★ 仅旧 USB/IP 路径使用（vjoy_out）：输出 JC1 wire raw 值。
+      HIDMaestro 路径请用 imu_semantic()，不要走这里。
+    """
     ax, ay, az, gx, gy, gz = (int(v) for v in raw6)
 
     # 解出的 report 值
@@ -144,3 +148,41 @@ def imu(side, raw6):
 
     return (_clamp(ax_r), _clamp(ay_r), _clamp(az_r),
             _clamp(gx_r), _clamp(gy_r), _clamp(gz_r))
+
+
+# ── HIDMaestro 路径：JC2 raw -> 语义 (g / dps) ──────────────────────────
+# 链路尽量简洁：不做"转 JC1 raw 再反算"的补丁。HIDMaestro profile 的
+# stateBlock 字段是语义 g/dps（accelG* scale=4096、gyroDps* scale=13371/936），
+# 由 SDK 负责填 wire，所以这里只做必要的两件事：
+#   1. 单位换算：JC2 raw -> g / dps（物理单位转换，不是补丁）
+#   2. 轴向变换：JC2 坐标系 -> 报告坐标系（与 imu() 相同的已验证推导）
+ACCEL_RAW_PER_G = 4096.0        # 与 profile accelG* scale 一致
+GYRO_RAW_PER_DPS = 16.384       # JC2/NS2 IMU 量纲（Pro2 实证，见上方推导）
+
+
+def imu_semantic(side, raw6):
+    """(ax,ay,az,gx,gy,gz) JC2 原始值 -> 语义 (accel g, gyro dps) 6 元组。
+
+    轴向变换与 imu() 完全一致，只是输出语义单位而非 JC1 wire raw。
+    """
+    ax, ay, az, gx, gy, gz = (int(v) for v in raw6)
+
+    # 轴向变换（与 imu() 相同，已由旧方案逐分量验证）
+    ax_r = ay
+    ay_r = -ax
+    az_r = az
+    gx_r = gy
+    gy_r = -gx
+    gz_r = gz
+
+    if side == "right":
+        ay_r = -ay_r
+        az_r = -az_r
+        gy_r = -gy_r
+        gz_r = -gz_r
+
+    # 单位换算到语义值。profile 会乘回 scale 得到 wire：
+    #   wire_gyro = dps * 13371/936 = raw/16.384 * 14.285 = raw / 1.1469
+    #   即等价于旧方案 GYRO_SCALE 的作用，但没有中间 raw 补丁层。
+    return (ax_r / ACCEL_RAW_PER_G, ay_r / ACCEL_RAW_PER_G, az_r / ACCEL_RAW_PER_G,
+            gx_r / GYRO_RAW_PER_DPS, gy_r / GYRO_RAW_PER_DPS, gz_r / GYRO_RAW_PER_DPS)

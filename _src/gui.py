@@ -531,30 +531,6 @@ class ControllerPairTab(QWidget):
         row3 = QHBoxLayout()
         row3.addWidget(self.calib_btn)
         row3.addWidget(self.disconnect_btn)
-        # ★ 输出模式选择（原生 JC2 / 充电握把 / 旧 JoyCon1），即时写配置
-        row4 = QHBoxLayout()
-        self.output_mode_combo = QComboBox()
-        self.output_mode_combo.addItem(tr("🎮 原生 Joy-Con 2 (2067/2066)"), "hidmaestro")
-        self.output_mode_combo.addItem(tr("🕹 充电握把 (200E, 功能全)"), "grip")
-        self.output_mode_combo.addItem(tr("📼 虚拟 Joy-Con 1 (旧版)"), "joycon1")
-        self.output_mode_combo.setStyleSheet(
-            "QComboBox { background:#f7c5db; color:#5c2340; border:1px solid #f3a8c9;"
-            " border-radius:5px; padding:8px; }"
-            "QComboBox:hover { background:#ffd9e9; }")
-        self.output_mode_combo.currentIndexChanged.connect(self.on_output_mode_changed)
-        row4.addWidget(self.output_mode_combo)
-        # 同步当前配置值（阻塞信号，避免初始化时误触发写回）
-        try:
-            from config import Config
-            _cur = str(Config().getConfig().get("output_mode", "hidmaestro")).strip().lower()
-            _idx = self.output_mode_combo.findData(_cur)
-            if _idx < 0:
-                _idx = 0
-            self.output_mode_combo.blockSignals(True)
-            self.output_mode_combo.setCurrentIndex(_idx)
-            self.output_mode_combo.blockSignals(False)
-        except Exception:
-            pass
         btns = QWidget()
         bl = QVBoxLayout(btns)
         bl.setContentsMargins(0, 0, 0, 0)
@@ -562,7 +538,6 @@ class ControllerPairTab(QWidget):
         bl.addLayout(row1)
         bl.addLayout(row2)
         bl.addLayout(row3)
-        bl.addLayout(row4)
         self._btn_bar = btns
         layout.addWidget(btns)
         self._refresh_connect_mode()
@@ -769,48 +744,6 @@ class ControllerPairTab(QWidget):
         """Clear this pair's log output"""
         self.log_output.clear()
 
-    def on_output_mode_changed(self, index: int):
-        """热切换输出模式：写 config + 立即重建所有虚拟设备（无需重启）。"""
-        mode = self.output_mode_combo.itemData(index)
-        if not mode:
-            return
-        try:
-            from config import Config
-            Config().set_output_mode(mode)
-        except Exception as e:  # noqa: BLE001
-            self.log_message(f"保存输出模式失败: {type(e).__name__}: {e}")
-            return
-        names = {
-            "hidmaestro": tr("原生 Joy-Con 2 (2067/2066)"),
-            "grip": tr("充电握把 (200E)"),
-            "joycon1": tr("虚拟 Joy-Con 1"),
-        }
-        self.log_message(tr("正在热切换到：%s …") % names.get(mode, mode))
-
-        # 同步其它 tab 的下拉框显示（避免信号回环：先 blockSignals）
-        parent = self.parent()
-        try:
-            tabs = getattr(parent, "controller_tabs", []) or []
-        except Exception:
-            tabs = []
-        for tab in tabs:
-            combo = getattr(tab, "output_mode_combo", None)
-            if combo is not None and combo is not self.output_mode_combo:
-                idx = combo.findData(mode)
-                if idx >= 0:
-                    combo.blockSignals(True)
-                    combo.setCurrentIndex(idx)
-                    combo.blockSignals(False)
-
-        # 真正热切换：关旧虚拟设备 + 按新模式重建（蓝牙连接保持）
-        try:
-            manager = get_controller_manager()
-            manager.switch_output_mode(mode)
-            self.log_message(tr("✓ 已热切换到：%s") % names.get(mode, mode))
-        except Exception as e:  # noqa: BLE001
-            self.log_message(tr("热切换失败: %s: %s") % (type(e).__name__, e))
-            QMessageBox.warning(self, tr("热切换失败"),
-                                tr("请检查日志。必要时完全退出后重启程序。"))
 
 
 class ScanThread(QThread):

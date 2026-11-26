@@ -98,59 +98,6 @@ class ControllerManager:
                 led_player=i + 1
             )
 
-    def switch_output_mode(self, mode: str) -> None:
-        """热切换输出模式：关掉每对旧的虚拟设备，立即按新模式重建。
-
-        蓝牙连接（pair.left/right 的 client）保持不动，只重建输出层
-        （pair.gamepad）。这样用户在 GUI 下拉框切换后立即生效，无需重启。
-        """
-        mode = str(mode).strip().lower()
-        # 先关掉所有 pair 的旧输出设备
-        for pair in self.pairs.values():
-            gp = pair.gamepad
-            if gp is None:
-                continue
-            try:
-                close = getattr(gp, "close", None)
-                if callable(close):
-                    close()
-            except Exception as exc:  # noqa: BLE001
-                _lg_error(f"关闭旧输出设备失败: {exc}")
-            pair.gamepad = None
-
-        # HIDMaestro 的 bridge 是提权的全局单实例（TCP 3250）。非提权的
-        # taskkill 杀不掉它，必须提权杀，否则新模式因 identity key 冲突
-        # 启动失败。然后清幽灵节点，让新模式从干净状态建设备。
-        if mode in ("hidmaestro", "jc2", "jc2native", "grip"):
-            try:
-                from hidden_exec import run_hidden
-                run_hidden(
-                    ["powershell", "-NoProfile", "-Command",
-                     "Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden "
-                     "-ArgumentList '-NoProfile','-Command',\"taskkill /F /IM HmBridge.exe 2>$null\""],
-                    timeout=30,
-                )
-            except Exception as exc:  # noqa: BLE001
-                _lg_error(f"提权关闭旧桥接失败: {exc}")
-            try:
-                from device_cleanup import remove_ghosts_elevated
-                import time
-                for _ in range(5):
-                    if remove_ghosts_elevated() == 0:
-                        break
-                    time.sleep(1)
-            except Exception as exc:  # noqa: BLE001
-                _lg_error(f"切换前清理设备失败: {exc}")
-
-        # 对活跃的 pair 立即按新模式重建输出层
-        for pair in self.pairs.values():
-            if not pair.is_active():
-                continue
-            try:
-                self._ensure_gamepad(pair)
-            except Exception as exc:  # noqa: BLE001
-                _lg_error(f"热切换重建输出失败(pair {pair.pair_id}): {exc}")
-
     @staticmethod
     def _ensure_gamepad(pair: ControllerPair):
         # ---- 已经是虚拟 Joy-Con 1：可能需要在右侧补齐设备 ----
@@ -163,44 +110,15 @@ class ControllerManager:
                 )
             return
 
-        # ---- 输出层 ----
-        # 接口与 VX360Gamepad 完全一致，所以上层 press_button /
-        # left_joystick / update 一行都不用改。
-        #   output_mode = hidmaestro/jc2：原生 Joy-Con 2（057E:2067/2066，HIDMaestro）
-        #   output_mode = grip：充电握把形态（057E:200E，Switch 1 握把协议）
-        #   output_mode = joycon1：虚拟 Joy-Con 1（057E:2006/2007，USB/IP）
+        # ---- 输出层（唯一形态：HIDMaestro 独立 Joy-Con 1）----
+        # 接口与 VX360Gamepad 一致，上层 press_button / left_joystick /
+        # update 一行都不用改。PID 2006/2007，平台自动组合，全平台兼容。
         try:
-            from config import Config
-            mode = str(Config().getConfig().get("output_mode", "joycon1")).strip().lower()
-        except Exception:
-            mode = "joycon1"
-
-        try:
-            if mode in ("hidmaestro", "jc2", "jc2native", "grip"):
-                from virtual.hidmaestro_out import HidMaestroJoyCon2
-                pset = "grip" if mode == "grip" else "jc2"
-                pair.gamepad_side = "both"
-                pair.gamepad = HidMaestroJoyCon2(side="both", profile_set=pset)
-                label = "充电握把形态（057E:200E）" if pset == "grip" else "原生 Joy-Con 2（057E:2067/2066）"
-                _lg_info(f"输出：{label}（HIDMaestro）")
-                print(f"[输出] {label}（HIDMaestro）", flush=True)
-                return
-
-            from virtual.vjoy_out import VirtualJoyCon1
-            # 这只 pair 当前接的是哪一侧：只接右手就建右手柄，
-            # 两只都接（双持）就建两只。
-            l_ok = getattr(pair.left, "is_connected", False)
-            r_ok = getattr(pair.right, "is_connected", False)
-            if l_ok and r_ok:
-                side = "both"
-            elif r_ok:
-                side = "right"
-            else:
-                side = "left"
-            pair.gamepad_side = side
-            pair.gamepad = VirtualJoyCon1(side=side)
-            _lg_info(f"输出：虚拟 Joy-Con 1（{side}）")
-            print(f"[输出] 虚拟 Joy-Con 1（{side}）", flush=True)
+            from virtual.hidmaestro_out import HidMaestroJoyCon2
+            pair.gamepad_side = "both"
+            pair.gamepad = HidMaestroJoyCon2(side="both")
+            _lg_info("输出：独立 Joy-Con 1（057E:2006/2007，HIDMaestro）")
+            print(f"[输出] {label}（HIDMaestro）", flush=True)
             return
         except Exception as exc:  # noqa: BLE001
             _lg_error(f"输出设备初始化失败: {exc}")

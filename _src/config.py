@@ -36,13 +36,6 @@ class Config:
         "srl_mapping": "",      # SR Left mapping (empty = unmapped)
         "slr_mapping": "",      # SL Right mapping (empty = unmapped)
         "srr_mapping": "",      # SR Right mapping (empty = unmapped)
-        # 输出模式：
-        #   hidmaestro = 原生 Joy-Con 2（057E:2067 L / 2066 R，HIDMaestro）—— 默认
-        #   grip       = 充电握把形态（057E:200E，Switch 1 握把 0x30 协议）：
-        #                SDL 里组合/分开都正常，功能按 Switch 1 协议
-        #   joycon1    = 虚拟 Joy-Con 1（057E:2006 / 2007，USB/IP）—— 旧路径，保留
-        #   xgip       = 虚拟 Xbox 360（原版行为）
-        "output_mode": "hidmaestro",
     }
 
     def __new__(cls, config_path=_cfg_path()):
@@ -99,9 +92,6 @@ class Config:
             self.srl_mapping = controller_section.get('srl_mapping', self.srl_mapping)
             self.slr_mapping = controller_section.get('slr_mapping', self.slr_mapping)
             self.srr_mapping = controller_section.get('srr_mapping', self.srr_mapping)
-            # 输出模式：xgip（原版 Xbox360）/ joycon1（虚拟 Joy-Con 1）
-            self.output_mode = str(
-                controller_section.get('output_mode', self.output_mode)).strip().lower()
         else:
             print(f"Section 'Controller' not found in {self._config_path}. Using default values.")
             self._init_defaults()
@@ -133,24 +123,4 @@ class Config:
             "srl_mapping": self.srl_mapping,
             "slr_mapping": self.slr_mapping,
             "srr_mapping": self.srr_mapping,
-            "output_mode": self.output_mode,
         }
-
-    def set_output_mode(self, mode: str) -> None:
-        """把 output_mode 写回 config.ini，并同步内存值。
-
-        只改这一个键，其它配置原样保留（读侧/写侧用同一个编码探测）。
-        """
-        import configparser
-        from error_handler import _cfg_encoding
-        mode = str(mode).strip().lower()
-        cp = configparser.ConfigParser()
-        enc = _cfg_encoding(self._config_path)
-        if os.path.exists(self._config_path):
-            cp.read(self._config_path, encoding=enc)
-        if not cp.has_section("Controller"):
-            cp.add_section("Controller")
-        cp.set("Controller", "output_mode", mode)
-        with open(self._config_path, "w", encoding=enc) as f:
-            cp.write(f)
-        self.output_mode = mode
