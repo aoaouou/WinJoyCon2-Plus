@@ -41,6 +41,10 @@ C_KEY_TARGETS = [
     ("RIGHT", Ns2Bit.RIGHT),
 ]
 C_KEY_MAP = dict(C_KEY_TARGETS)
+# 旧配置里 SL/SR 映射目标可能存的是 "L3"/"R3"（旧键名）。
+# JoyCon 上本来叫 LS/RS，这里补上别名，老配置无需迁移即可继续匹配。
+C_KEY_MAP["L3"] = Ns2Bit.LS
+C_KEY_MAP["R3"] = Ns2Bit.RS
 
 
 def get_default_controls():
@@ -54,7 +58,7 @@ def get_default_controls():
         "Left": {
             "ZL": Ns2Bit.ZL,
             "L": Ns2Bit.L,
-            "L3": Ns2Bit.LS,
+            "LS": Ns2Bit.LS,
             "Up": Ns2Bit.UP,
             "Down": Ns2Bit.DOWN,
             "Left": Ns2Bit.LEFT,
@@ -67,7 +71,7 @@ def get_default_controls():
         "Right": {
             "ZR": Ns2Bit.ZR,
             "R": Ns2Bit.R,
-            "R3": Ns2Bit.RS,
+            "RS": Ns2Bit.RS,
             "A": Ns2Bit.A,
             "B": Ns2Bit.B,
             "X": Ns2Bit.X,
@@ -690,7 +694,7 @@ async def update(pair_id: int = 0):
             if b.get("L"):       left_bits |= n.L
             if b.get("ZL"):      left_bits |= n.ZL
             if b.get("Minus"):   left_bits |= n.MINUS
-            if b.get("L3"):      left_bits |= n.LS
+            if b.get("LS"):      left_bits |= n.LS
             if b.get("Capture"): left_bits |= n.CAPTURE
             if b.get("SLL"):     left_bits |= n.SL_L
             if b.get("SRL"):     left_bits |= n.SR_L
@@ -705,7 +709,7 @@ async def update(pair_id: int = 0):
             if b.get("R"):       right_bits |= n.R
             if b.get("ZR"):      right_bits |= n.ZR
             if b.get("Plus"):    right_bits |= n.PLUS
-            if b.get("R3"):      right_bits |= n.RS
+            if b.get("RS"):      right_bits |= n.RS
             if b.get("Home"):    right_bits |= n.HOME
             if b.get("SLR"):     right_bits |= n.SL_R
             if b.get("SRR"):     right_bits |= n.SR_R

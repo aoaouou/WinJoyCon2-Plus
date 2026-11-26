@@ -98,12 +98,12 @@ class InputSettingsWidget(QWidget):
     def button_items():
         # 系统功能键不可自定义、不可录宏：C键=模式切换/宏；+/-=DPI
         return [(tr("左肩键 L"), ["L"]), (tr("左扳机 ZL"), ["ZL"]),
-                (tr("左摇杆按下 L3"), ["L3"]), (tr("截图键"), ["Capture"]),
+                (tr("左摇杆按下 LS"), ["LS"]), (tr("截图键"), ["Capture"]),
                 (tr("十字 上"), ["Up"]), (tr("十字 下"), ["Down"]),
                 (tr("十字 左"), ["Left"]), (tr("十字 右"), ["Right"]),
                 (tr("左手柄 SL"), ["SLL"]), (tr("左手柄 SR"), ["SRL"]),
                 (tr("右肩键 R"), ["R"]), (tr("右扳机 ZR"), ["ZR"]),
-                (tr("右摇杆按下 R3"), ["R3"]), (tr("HOME 键"), ["Home"]),
+                (tr("右摇杆按下 RS"), ["RS"]), (tr("HOME 键"), ["Home"]),
                 ("A", ["A"]), ("B", ["B"]), ("X", ["X"]), ("Y", ["Y"]),
                 (tr("右手柄 SL"), ["SLR"]), (tr("右手柄 SR"), ["SRR"])]
 
@@ -222,20 +222,6 @@ class InputSettingsWidget(QWidget):
             cb.stateChanged.connect(lambda s, k=key: self.mm.set_option(
                 self.pair_id, k, s == Qt.Checked, persist=True))
             of.addRow("", cb)
-        # 模拟器兼容模式（热切换，立即生效）：不同模拟器对重复缓存帧的积分不同
-        from virtual.imu_proc import get_imu_compat_mode, set_imu_compat_mode
-        compat = QComboBox()
-        compat.addItem(tr("Ryujinx（默认）"), "ryujinx")
-        compat.addItem(tr("Eden"), "eden")
-        ci = compat.findData(get_imu_compat_mode())
-        compat.setCurrentIndex(ci if ci >= 0 else 0)
-        compat.currentIndexChanged.connect(
-            lambda i, c=compat: set_imu_compat_mode(c.itemData(i), persist=True))
-        of.addRow(tr("模拟器兼容") + ":", compat)
-        hint = QLabel(tr("体感太快选 Eden，太慢/正常保持 Ryujinx。切换立即生效，无需重连。"))
-        hint.setStyleSheet("color:#96617f; font-size:11px;")
-        hint.setWordWrap(True)
-        of.addRow("", hint)
         og.setLayout(of)
         lay.addWidget(og)
         lay.addWidget(self._keymap_group(self.mm.MODE_GYRO, "陀螺仪鼠标模式按键映射"))
@@ -1868,12 +1854,6 @@ def main():
 
     # 加载界面语言（必须在创建窗口前，tr() 才能取到正确语言）
     i18n.load_language()
-    # 加载陀螺仪模拟器兼容模式（Ryujinx/Eden）
-    try:
-        from virtual.imu_proc import load_imu_compat_mode
-        load_imu_compat_mode()
-    except Exception:
-        pass
 
     # ---- 全局异常钩子：把任何未捕获异常写进 crash.log ----
     # 打包版没有控制台，崩溃时什么都看不到。这个钩子保证一定能留痕。

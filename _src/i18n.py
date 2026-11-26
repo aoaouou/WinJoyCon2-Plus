@@ -68,12 +68,12 @@ T = {
 
     # ── 按钮名 ──
     "左肩键 L": "Left Shoulder L", "左扳机 ZL": "Left Trigger ZL",
-    "左摇杆按下 L3": "Left Stick Press L3", "截图键": "Capture",
+    "左摇杆按下 LS": "Left Stick Press LS", "截图键": "Capture",
     "十字 上": "D-Pad Up", "十字 下": "D-Pad Down",
     "十字 左": "D-Pad Left", "十字 右": "D-Pad Right",
     "左手柄 SL": "Left SL", "左手柄 SR": "Left SR",
     "右肩键 R": "Right Shoulder R", "右扳机 ZR": "Right Trigger ZR",
-    "右摇杆按下 R3": "Right Stick Press R3", "HOME 键": "HOME",
+    "右摇杆按下 RS": "Right Stick Press RS", "HOME 键": "HOME",
     "右手柄 SL": "Right SL", "右手柄 SR": "Right SR",
     "A": "A", "B": "B", "X": "X", "Y": "Y",
 
@@ -143,12 +143,6 @@ T = {
         "Reset will clear remembered controller sides. Continue?",
     "⚙ 输入模式设置": "⚙ Input Settings",
     "输入模式设置": "Input Mode Settings",
-    "Ryujinx（默认）": "Ryujinx (default)",
-    "Eden": "Eden",
-    "模拟器兼容": "Emulator compatibility",
-    "体感太快选 Eden，太慢/正常保持 Ryujinx。切换立即生效，无需重连。":
-        "Gyro too fast? pick Eden. Too slow/normal? keep Ryujinx. "
-        "Takes effect instantly, no reconnect needed.",
     "已连接{s1}手柄。请唤醒{s2}手柄并长按 SYNC，然后选侧连接。":
         "{s1} controller connected. Wake the {s2} controller, hold SYNC, then connect.",
     "{n}/4 组手柄": "{n}/4 Pairs",

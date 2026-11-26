@@ -91,7 +91,7 @@ km = mm.get_keymap(1, mm.MODE_MOUSE)
 check("默认 L=左键", km.get("L") == mm.ACT_LEFT)
 check("默认 ZL=右键", km.get("ZL") == mm.ACT_RIGHT)
 check("默认 X=前进", km.get("X") == mm.ACT_FWD)
-check("默认 L3=回中心", km.get("L3") == mm.ACT_CENTER and km.get("R3") == mm.ACT_CENTER)
+check("默认 LS=回中心", km.get("LS") == mm.ACT_CENTER and km.get("RS") == mm.ACT_CENTER)
 check("陀螺仪默认同款", mm.get_keymap(1, mm.MODE_GYRO).get("Capture") == mm.ACT_MIDDLE)
 km2 = dict(km)
 km2["A"] = mm.ACT_MIDDLE

@@ -25,7 +25,7 @@ def get_default_controls():
             "0": {  # Vertical
                 "ZL": "LEFT_TRIGGER",
                 "L": None,  # Add L button mapping
-                "L3": None,
+                "LS": None,
                 "Up": None,
                 "Down": None,
                 "Left": None,
@@ -40,7 +40,7 @@ def get_default_controls():
             "0": {  # Vertical
                 "ZR": "RIGHT_TRIGGER",
                 "R": None,  # Add R button mapping
-                "R3": None,
+                "RS": None,
                 "A": None,
                 "B": None,
                 "X": None,
@@ -296,7 +296,7 @@ async def update(joycon, side, isInMouse, pair_id: int):
         if b.get("L"):        bits |= n.L
         if b.get("ZL"):       bits |= n.ZL
         if b.get("Minus"):    bits |= n.MINUS
-        if b.get("L3"):       bits |= n.LS
+        if b.get("LS"):       bits |= n.LS
         if b.get("Capture"):  bits |= n.CAPTURE
         if b.get("SLL"):      bits |= n.SL_L
         if b.get("SRL"):      bits |= n.SR_L
@@ -307,7 +307,7 @@ async def update(joycon, side, isInMouse, pair_id: int):
         if b.get("R"):        bits |= n.R
         if b.get("ZR"):       bits |= n.ZR
         if b.get("Plus"):     bits |= n.PLUS
-        if b.get("R3"):       bits |= n.RS
+        if b.get("RS"):       bits |= n.RS
         if b.get("Home"):     bits |= n.HOME
         if b.get("SLR"):      bits |= n.SL_R
         if b.get("SRR"):      bits |= n.SR_R

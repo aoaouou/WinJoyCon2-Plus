@@ -42,14 +42,14 @@ ACT_SCROLL_UP = "scroll_up"
 ACT_SCROLL_DOWN = "scroll_down"
 ACT_DPI_UP = "dpi_up"      # 灵敏度升挡
 ACT_DPI_DOWN = "dpi_down"  # 灵敏度降挡
-ACT_CENTER = "center"      # 光标回屏幕中心（陀螺仪模式 L3/RS 摇杆按下）
+ACT_CENTER = "center"      # 光标回屏幕中心（陀螺仪模式 LS/RS 摇杆按下）
 ACTIONS = (ACT_NONE, ACT_LEFT, ACT_RIGHT, ACT_MIDDLE, ACT_FWD, ACT_BACK,
            ACT_SCROLL_UP, ACT_SCROLL_DOWN, ACT_DPI_UP, ACT_DPI_DOWN, ACT_CENTER)
 
 # 可映射的按钮语义（左右手柄通用名，实际取各自 buttons 字典）
-LEFT_BUTTONS = ("Up", "Down", "Left", "Right", "L", "ZL", "Minus", "L3",
+LEFT_BUTTONS = ("Up", "Down", "Left", "Right", "L", "ZL", "Minus", "LS",
                 "Capture", "SLL", "SRL")
-RIGHT_BUTTONS = ("Up", "Down", "Left", "Right", "R", "ZR", "Plus", "R3",
+RIGHT_BUTTONS = ("Up", "Down", "Left", "Right", "R", "ZR", "Plus", "RS",
                  "Home", "GameChat", "SLR", "SRR")
 
 # ── 默认 keymap（沿用既有行为）───────────────────────────────────────────────
@@ -69,7 +69,7 @@ def default_keymap() -> dict:
         # 灵敏度挡位
         "Plus": ACT_DPI_UP, "Minus": ACT_DPI_DOWN,
         # 摇杆按下 = 光标回屏幕中心（陀螺仪模式尤其有用）
-        "L3": ACT_CENTER, "R3": ACT_CENTER,
+        "LS": ACT_CENTER, "RS": ACT_CENTER,
     }
 
 
@@ -260,19 +260,25 @@ def set_all_mode(mode: str, pair_count: int = 4, persist: bool = True):
             save_config(pair_id)
 
 
+# 旧版键名 → 新版键名。JoyCon 上本来就叫 LS/RS，旧配置里存的 L3/R3 要迁移。
+_RENAMED_KEYS = {"L3": "LS", "R3": "RS"}
+
+
 def get_keymap(pair_id: int, mode: str) -> dict:
     """取该模式的按键映射。
 
     ★ 用默认 keymap 做**增量补全**：老版本保存的配置里没有后来新增的
-      键（如 L3/R3 回中心），若不补全，这些功能对老配置永久失效。
+      键（如 LS/RS 回中心），若不补全，这些功能对老配置永久失效。
       用户显式设过 ""（不映射）的键保留原值，不被默认覆盖。
+    ★ 同时把旧键名 L3/R3 迁移成 LS/RS（JoyCon 的实际叫法）。
     """
     cfg = get_config(pair_id)
     key = "keymap_gyro" if mode == MODE_GYRO else "keymap_mouse"
     saved = cfg.get(key) or {}
     merged = default_keymap()
     for k, v in saved.items():
-        merged[k] = v          # 用户自定义优先（含显式 "" 表示不映射）
+        k = _RENAMED_KEYS.get(k, k)      # 旧配置里的 L3/R3 → LS/RS
+        merged[k] = v                    # 用户自定义优先（含显式 "" 表示不映射）
     return merged
 
 

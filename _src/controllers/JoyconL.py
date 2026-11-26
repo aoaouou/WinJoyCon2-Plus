@@ -38,7 +38,7 @@ class JoyConLeft:
             "Down": False,
             "Up": False,
             "Right": False,
-            "L3": False,
+            "LS": False,
             "Capture": False,
         }
         self.analog_stick = {
@@ -138,7 +138,7 @@ class JoyConLeft:
         self.buttons["Down"] = bool(btnDatas & 0x0001)
         self.buttons["Up"] = bool(btnDatas & 0x0002)
         self.buttons["Right"] = bool(btnDatas & 0x0004)
-        self.buttons["L3"] = bool(btnDatas & 0x0800)
+        self.buttons["LS"] = bool(btnDatas & 0x0800)
         self.buttons["Capture"] = bool(btnDatas & 0x2000)
 
         # 摇杆：从统一解析层取**按侧**的值

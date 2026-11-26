@@ -33,7 +33,7 @@ class JoyConRight:
             "B": False,
             "X": False,
             "A": False,
-            "R3": False,
+            "RS": False,
             "Home": False,
             "GameChat": False,
         }
@@ -130,7 +130,7 @@ class JoyConRight:
         self.buttons["B"] = bool(btnDatas & 0x0400)
         self.buttons["X"] = bool(btnDatas & 0x0200)
         self.buttons["A"] = bool(btnDatas & 0x0800)
-        self.buttons["R3"] = bool(btnDatas & 0x0004)
+        self.buttons["RS"] = bool(btnDatas & 0x0004)
         self.buttons["Home"] = bool(btnDatas & 0x0010)
         self.buttons["GameChat"] = bool(btnDatas & 0x0040)
 
