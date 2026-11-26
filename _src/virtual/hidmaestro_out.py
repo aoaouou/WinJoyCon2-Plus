@@ -79,16 +79,15 @@ _HM_SL = 1 << 4
 _HM_SR = 1 << 5
 _HM_L_HOME = 1 << 12
 # R 半 ABXY（位置名）；slot 标签 #3=Y 却产生位置 A，反之亦然
-# R 半 ABXY → HMButton 位。经独立 JC1 profile 实测（PID 2006/2007，
-# SDL 自动组合读 HandleCombinedControllerStateR）：
-#   bit2 → SDL SOUTH(显示 A)   bit0 → SDL EAST(显示 B)
-#   bit3 → SDL WEST(显示 X)    bit1 → SDL NORTH(显示 Y)
-# 2026-11-26 实测推 Ns2Bit.A 用旧值 bit3 得到 SDL X → 证实 A/X、B/Y 互换，
-# 故按实测交换：A→bit2, B→bit0, X→bit3, Y→bit1。
-_HM_R_POS_A = 1 << 2   # → SDL SOUTH（显示 A）
-_HM_R_POS_B = 1 << 0   # → SDL EAST（显示 B）
-_HM_R_POS_X = 1 << 3   # → SDL WEST（显示 X）
-_HM_R_POS_Y = 1 << 1   # → SDL NORTH（显示 Y）
+# R 半 ABXY → HMButton 位。
+# ★ 用户 2026-11-26 真机实测：上一版 A↔B、X↔Y 互换。按用户反馈交换回来。
+#   A→bit0  B→bit2  X→bit1  Y→bit3
+# 依据：joycon-r.json stateBlock byte2 = ["#3","#1","#2","#0",...]，
+# 经真机验证这四位分别对应手柄物理 A/B/X/Y 的正确位置。
+_HM_R_POS_A = 1 << 0
+_HM_R_POS_B = 1 << 2
+_HM_R_POS_X = 1 << 1
+_HM_R_POS_Y = 1 << 3
 _HM_PLUS = 1 << 9
 _HM_RS = 1 << 11
 _HM_HOME = 1 << 12
@@ -386,10 +385,12 @@ class HidMaestroJoyCon2:
                 self._stick_r = v
 
     def set_imu_raw(self, side: str, raw6: tuple) -> None:
-        from virtual.imu_proc import imu_semantic
-        # 直接得到语义 (g/dps)，SDK/profile 负责按 scale 填 wire；
-        # 不做"转 JC1 raw 再反算"的补丁层。
-        sample = imu_semantic(side, raw6)
+        from virtual.imu_proc import imu
+        # ★ 照抄旧 USB/IP 方案验证过的 imu()：它输出的就是真机 JC1 的
+        #   wire raw 值（量纲 GYRO_SCALE + 轴向都已验证）。桥接会把 raw
+        #   反算成语义 g/dps 再交给 profile（profile scale 回去正好得到
+        #   同样的 wire）——这样与旧方案逐字节一致，避免方向/初始状态错。
+        sample = imu(side, raw6)
         with self._lock:
             if side == "left":
                 self._imu_l = tuple(float(v) for v in sample)

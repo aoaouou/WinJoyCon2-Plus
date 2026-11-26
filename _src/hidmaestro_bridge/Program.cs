@@ -307,62 +307,54 @@ internal static class Program
 
     static void HookOutput(Device dev, object ctrl)
     {
-        // OutputDecoded is EventHandler<HMOutputDecodedEventArgs>. That event
-        // args has NO LeftMotor/RightMotor fields: the rumble amplitudes come
-        // in its `Fields` dictionary under the profile's decoder semantics
-        // ("leftMotor" / "rightMotor", boxed as byte). Read those keys.
-        var ev = ctrl.GetType().GetEvent("OutputDecoded");
-        if (ev != null)
+        // OutputReceived = Action<HMController, HMOutputPacket>。
+        // ★ 不能直接用 Delegate.CreateDelegate(ht, lambda.Method)：
+        //   lambda 是 (object,object)，与 (HMController,HMOutputPacket) 参数
+        //   类型不兼容，CreateDelegate 会抛异常并被 catch 吞掉 → 事件根本没
+        //   挂上（这就是之前完全收不到震动的原因）。改用 Expression 构造
+        //   签名完全匹配的委托。
+        var ev = ctrl.GetType().GetEvent("OutputReceived");
+        if (ev == null) return;
+        try
         {
-            try
-            {
-                var handlerType = ev.EventHandlerType!;
-                var argsType = handlerType.GetGenericArguments()[0];
-                var fieldsProp = argsType.GetProperty("Fields");
-                var rawProp = argsType.GetProperty("RawBytes");
-                if (fieldsProp != null)
-                {
-                    Delegate d = Delegate.CreateDelegate(handlerType, null,
-                        new Action<object, object>((s, e) =>
-                        {
-                            var fields = fieldsProp.GetValue(e) as System.Collections.IDictionary;
-                            float ToAmp(string key)
-                            {
-                                if (fields == null) return 0f;
-                                foreach (System.Collections.DictionaryEntry kv in fields)
-                                    if (string.Equals(kv.Key as string, key, StringComparison.OrdinalIgnoreCase))
-                                        return Convert.ToSingle(kv.Value, Inv) / 255f;
-                                return 0f;
-                            }
-                            float l = ToAmp("leftMotor"), r = ToAmp("rightMotor");
-                            if (l > 0f || r > 0f) { PublishRumble(dev, l, r, "OUT"); return; }
-                            // Fallback: forward the raw output report bytes.
-                            if (rawProp?.GetValue(e) is ReadOnlyMemory<byte> rom)
-                                PublishRaw(dev, rom.ToArray());
-                        }).Method);
-                    ev.AddEventHandler(ctrl, d);
-                    return;
-                }
-            }
-            catch { /* fall through */ }
-        }
+            var ht = ev.EventHandlerType!;
+            var args = ht.GetGenericArguments();
+            var packetType = args[1];  // HMOutputPacket
+            var ridField = packetType.GetField("ReportId");
+            var dataField = packetType.GetField("Data");
+            var srcField = packetType.GetField("Source");
+            if (ridField == null || dataField == null) return;
 
-        // Fallback: OutputReceived (Action<byte[]> or similar) -> forward raw hex.
-        var ev2 = ctrl.GetType().GetEvent("OutputReceived");
-        if (ev2 != null)
-        {
-            try
-            {
-                var ht = ev2.EventHandlerType!;
-                var argT = ht.GetGenericArguments().FirstOrDefault();
-                if (argT == typeof(byte[]))
-                {
-                    ev2.AddEventHandler(ctrl, new Action<byte[]>(b =>
-                        PublishRaw(dev, b)));
-                }
-            }
-            catch { }
+            var pCtrl = System.Linq.Expressions.Expression.Parameter(args[0], "c");
+            var pPkt = System.Linq.Expressions.Expression.Parameter(packetType, "p");
+            var sideField = typeof(HmBridgeSupport.OutputHook).GetField("Side")!;
+            var handleMi = typeof(HmBridgeSupport.OutputHook).GetMethod("Handle")!;
+            // (c, p) => { OutputHook.Side = dev.Side; OutputHook.Handle(c, (object)p); }
+            var setSide = System.Linq.Expressions.Expression.Assign(
+                System.Linq.Expressions.Expression.Field(null, sideField),
+                System.Linq.Expressions.Expression.Constant(dev.Side));
+            var callHandle = System.Linq.Expressions.Expression.Call(handleMi,
+                System.Linq.Expressions.Expression.Convert(pCtrl, typeof(object)),
+                System.Linq.Expressions.Expression.Convert(pPkt, typeof(object)));
+            var body = System.Linq.Expressions.Expression.Block(setSide, callHandle);
+            var lambda = System.Linq.Expressions.Expression.Lambda(ht, body, pCtrl, pPkt);
+            ev.AddEventHandler(ctrl, lambda.Compile());
+            // 发布回调：把振幅推给订阅者
+            HmBridgeSupport.OutputHook.OnRumble = (side, amp) =>
+                PublishRumble(GetDevice(side), amp, amp, "OUT");
+            Console.WriteLine($"output hook attached: {dev.Side}");
         }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("HookOutput failed: " + ex.Message);
+        }
+    }
+
+    /// <summary>按侧别取设备（震动回调里用）。</summary>
+    static Device GetDevice(string side)
+    {
+        lock (_devicesLock)
+            return Devices.TryGetValue(side, out var d) ? d : throw new Exception("no device " + side);
     }
 
     static void PublishRumble(Device dev, float l, float r, string tag)
@@ -435,14 +427,18 @@ internal static class Program
             lock (dev.Lock)
             {
                 var st = dev.State;
-                // 语义值直写：HIDMaestro profile 负责按 scale 填 wire。
-                // Python 侧传来的就是 g/dps（imu_semantic），不做反算补丁。
-                _stateType.GetField("AccelGX")?.SetValue(st, ax);
-                _stateType.GetField("AccelGY")?.SetValue(st, ay);
-                _stateType.GetField("AccelGZ")?.SetValue(st, az);
-                _stateType.GetField("GyroDpsX")?.SetValue(st, gx);
-                _stateType.GetField("GyroDpsY")?.SetValue(st, gy);
-                _stateType.GetField("GyroDpsZ")?.SetValue(st, gz);
+                // Python 侧 imu_proc.imu() 输出真机 JC1 的 wire raw（已验证
+                // 的量纲与轴向）。HIDMaestro profile 字段是语义 g/dps，写出时
+                // 会再乘 scale（accel×4096、gyro×13371/936）。故先反算成
+                // 语义值，profile scale 回去正好等于旧方案的 wire raw。
+                const float aScale = 4096f;
+                const float gScale = 13371f / 936f;
+                _stateType.GetField("AccelGX")?.SetValue(st, ax / aScale);
+                _stateType.GetField("AccelGY")?.SetValue(st, ay / aScale);
+                _stateType.GetField("AccelGZ")?.SetValue(st, az / aScale);
+                _stateType.GetField("GyroDpsX")?.SetValue(st, gx / gScale);
+                _stateType.GetField("GyroDpsY")?.SetValue(st, gy / gScale);
+                _stateType.GetField("GyroDpsZ")?.SetValue(st, gz / gScale);
                 dev.Submit.Invoke(dev.Ctrl, new object[] { st });
             }
         }
