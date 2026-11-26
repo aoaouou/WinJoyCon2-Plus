@@ -16,60 +16,65 @@ namespace HmBridgeSupport;
 /// </summary>
 public static class OutputHook
 {
-    /// <summary>由 Program 注入：收到震动包时怎么发布（side, amp）。</summary>
-    public static Action<string, float>? OnRumble;
+    /// <summary>由 Program 注入：收到震动包时怎么发布（side, 左右两个 4 字节块）。</summary>
+    public static Action<string, byte[], byte[]>? OnRumbleBlocks;
 
     /// <summary>当前 hook 绑定的设备侧别（"L"/"R"）。</summary>
     public static string Side = "";
 
-    /// <summary>
-    /// OutputReceived 的事件处理体。签名刻意用 (object, object)，配合
-    /// Program 侧的 open-instance 委托绑定，避免顶级语句里拿不到类型。
-    /// </summary>
+    /// <summary>OutputReceived 的事件处理体。</summary>
     public static void Handle(object? sender, object packet)
     {
-        float amp = DecodeAmplitude(packet);
-        if (amp < 0f) return;
-        try { OnRumble?.Invoke(Side, amp); } catch { }
+        var blocks = DecodeRumbleBlocks(packet);
+        if (blocks == null) return;
+        try { OnRumbleBlocks?.Invoke(Side, blocks[0], blocks[1]); } catch { }
     }
 
     /// <summary>
-    /// 从 HMOutputPacket（反射传入）解出震动振幅 0..1。
-    /// 不是震动包（report id 不是 0x01/0x10、或 source 不是 HidOutput）返回 -1。
+    /// 从 HMOutputPacket 取出真机 JC1 的两个 4 字节震动块（左/右）。
+    /// 不是震动包返回 null。
+    ///
+    /// ★ 不在 C# 里解振幅：旧 USB/IP 方案 rumble_hd.jc1_block_to_jc2 有
+    ///   完整、经验证的解码链（SDL 权威振幅表 _HFA_KEYS、中性判定、
+    ///   频率锁 JC2 原生）。这里只负责把**原始 4 字节块**送到 Python，
+    ///   避免自己乱解（之前按 0x10 布局硬解 0x01 包 → 晃手柄就乱震）。
+    ///
+    /// 布局（ReportId 已被 SDK 提走，Data 从 ucPacketNumber 起）：
+    ///   b[0]      = packetNumber
+    ///   b[1..5]   = rumbleData[0]（4 字节，从 b[1] 起）
+    ///   b[5..9]   = rumbleData[1]
+    /// 而旧方案约定用 data[2:6] / data[6:10]（即含 packetNumber 的偏移），
+    /// 两者等价：这里给 b[1:5] / b[5:9]。
     /// </summary>
-    public static float DecodeAmplitude(object packet)
+    public static byte[][]? DecodeRumbleBlocks(object packet)
     {
-        if (packet == null) return -1f;
+        if (packet == null) return null;
         var t = packet.GetType();
 
         var ridF = t.GetField("ReportId");
         var dataF = t.GetField("Data");
-        if (ridF == null || dataF == null) return -1f;
+        if (ridF == null || dataF == null) return null;
 
         byte rid = (byte)ridF.GetValue(packet)!;
 
-        // Source：0 = HidOutput（0x01 带子命令 / 0x10 纯震动）。
-        // 其它（HidFeature / XInput…）不是我们要的震动包。
         var srcF = t.GetField("Source");
         if (srcF != null)
         {
             var sv = srcF.GetValue(packet);
-            if (sv != null && Convert.ToInt32(sv) != 0) return -1f;
+            if (sv != null && Convert.ToInt32(sv) != 0) return null;
         }
 
-        if (rid != 0x01 && rid != 0x10) return -1f;
+        // 只有 0x01（震动+子命令）和 0x10（纯震动）带震动块。
+        if (rid != 0x01 && rid != 0x10) return null;
 
         var rom = (ReadOnlyMemory<byte>)dataF.GetValue(packet)!;
         var b = rom.ToArray();
-        // SDL SwitchCommonOutputPacket_t（ReportId 已被 SDK 提走）：
-        //   b[0]      = packetNumber
-        //   b[1..4]   = rumbleData[0]：HFfreq, HFamp|freq高位, LFfreq|amp高位, LFamp
-        //   b[5..8]   = rumbleData[1]
-        // HF 振幅 4 bit（/15）；LF 振幅 9 bit（b[3] 的 bit7 是最高位，/511）
-        if (b.Length < 9) return -1f;
+        if (b.Length < 9) return null;
 
-        int hf = b[2] & 0x0F;
-        int lf = ((b[3] & 0x80) << 1) | b[4];
-        return Math.Max(hf / 15f, lf / 511f);
+        var left = new byte[4];
+        var right = new byte[4];
+        Array.Copy(b, 1, left, 0, 4);
+        Array.Copy(b, 5, right, 0, 4);
+        return new[] { left, right };
     }
 }

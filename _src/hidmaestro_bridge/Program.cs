@@ -339,9 +339,14 @@ internal static class Program
             var body = System.Linq.Expressions.Expression.Block(setSide, callHandle);
             var lambda = System.Linq.Expressions.Expression.Lambda(ht, body, pCtrl, pPkt);
             ev.AddEventHandler(ctrl, lambda.Compile());
-            // 发布回调：把振幅推给订阅者
-            HmBridgeSupport.OutputHook.OnRumble = (side, amp) =>
-                PublishRumble(GetDevice(side), amp, amp, "OUT");
+            // 发布回调：把原始 4+4 字节震动块推给 Python，由已验证的
+            // rumble_hd.jc1_block_to_jc2 解码（不在 C# 里自己解振幅）。
+            HmBridgeSupport.OutputHook.OnRumbleBlocks = (side, left, right) =>
+            {
+                var dev2 = GetDevice(side);
+                // RUMBLE <side> <left4hex> <right4hex>
+                Broadcast($"RUMBLE {side} {Convert.ToHexString(left)} {Convert.ToHexString(right)}");
+            };
             Console.WriteLine($"output hook attached: {dev.Side}");
         }
         catch (Exception ex)
@@ -427,15 +432,42 @@ internal static class Program
             lock (dev.Lock)
             {
                 var st = dev.State;
-                // 原生直写：Python 给的就是物理轴语义值（g / dps）。
-                // profile 的 scale 与 negate 负责换算成真机 wire —— SDK 的
-                // 职责，这里不重复做任何变换（重复会二次翻轴，姿态会立起来）。
-                _stateType.GetField("AccelGX")?.SetValue(st, ax);
-                _stateType.GetField("AccelGY")?.SetValue(st, ay);
-                _stateType.GetField("AccelGZ")?.SetValue(st, az);
-                _stateType.GetField("GyroDpsX")?.SetValue(st, gx);
-                _stateType.GetField("GyroDpsY")?.SetValue(st, gy);
-                _stateType.GetField("GyroDpsZ")?.SetValue(st, gz);
+                // ══════════════════════════════════════════════════════════
+                // 目标：让 0x30 报告的 IMU 字节与旧 USB/IP 方案**逐字节相同**。
+                // 权威依据：virtual/reports.py:474-516（已验证的实现）
+                //   报告布局固定为 [13-14]accel_x [15-16]accel_y [17-18]accel_z
+                //                  [19-20]gyro_x  [21-22]gyro_y  [23-24]gyro_z
+                //   （注释明写：写成 az,ax,ay 会导致体感全程乱转）
+                //
+                // profile 的属性→报告位置映射是"错位"的：
+                //   accelGZ → 报告 accel_x 位置
+                //   accelGX → 报告 accel_y 位置
+                //   accelGY → 报告 accel_z 位置
+                // （gyroDpsZ/X/Y 同理对应 gyro_x/y/z 位置）
+                // 且 profile 自带 negate（L: GZ/GX 取负, GY 不取；R: GZ 不取,
+                // GX/GY 取负）。所以要"报告位置 i = v_i"，属性值必须反解。
+                //
+                // Python 传的是 imu() 的输出（报告顺序的 wire raw，
+                // 量纲 4096/g 与 13371/936 dps），这里换算成 g/dps 再反解。
+                const float aScale = 4096f;
+                const float gScale = 13371f / 936f;
+                bool isL = side == "L";
+                // 报告位置 x/y/z 的值（g 与 dps）
+                float ax_ = ax / aScale, ay_ = ay / aScale, az_ = az / aScale;
+                float gx_ = gx / gScale, gy_ = gy / gScale, gz_ = gz / gScale;
+                // 反解：属性值 = ±报告值（按各侧 negate 表）
+                float gzAttr = isL ? -ax_ : ax_;    // accelGZ → 报告 x
+                float gxAttr = -ay_;                // accelGX → 报告 y（两侧都 negate）
+                float gyAttr = isL ? az_ : -az_;    // accelGY → 报告 z
+                float rgzAttr = isL ? -gx_ : gx_;   // gyroDpsZ → 报告 gx
+                float rgxAttr = -gy_;               // gyroDpsX → 报告 gy（两侧都 negate）
+                float rgyAttr = isL ? gz_ : -gz_;   // gyroDpsY → 报告 gz
+                _stateType.GetField("AccelGZ")?.SetValue(st, gzAttr);
+                _stateType.GetField("AccelGX")?.SetValue(st, gxAttr);
+                _stateType.GetField("AccelGY")?.SetValue(st, gyAttr);
+                _stateType.GetField("GyroDpsZ")?.SetValue(st, rgzAttr);
+                _stateType.GetField("GyroDpsX")?.SetValue(st, rgxAttr);
+                _stateType.GetField("GyroDpsY")?.SetValue(st, rgyAttr);
                 dev.Submit.Invoke(dev.Ctrl, new object[] { st });
             }
         }

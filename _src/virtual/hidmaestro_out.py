@@ -273,12 +273,20 @@ class HidMaestroJoyCon2:
             self._init_failed = True
             return False
 
-        # 杀掉旧实例（可能占用 identity key）
+        # 杀旧实例（可能占用 identity key）。没有残留时 taskkill 会立刻返回，
+        # 所以不再固定 sleep(1)，改为按需短等。
+        had_old = False
         try:
-            run_hidden(["taskkill", "/F", "/IM", _BRIDGE_EXE], timeout=8)
+            from hidden_exec import run_hidden
+            r = run_hidden(["tasklist", "/FI", f"IMAGENAME eq {_BRIDGE_EXE}"],
+                           timeout=5)
+            had_old = _BRIDGE_EXE.lower() in (r.stdout or "").lower()
+            if had_old:
+                run_hidden(["taskkill", "/F", "/IM", _BRIDGE_EXE], timeout=8)
         except Exception:
             pass
-        time.sleep(1)
+        if had_old:
+            time.sleep(0.4)
 
         # 提权启动（CreateController 要管理员 token）。
         # run_hidden 是阻塞的 subprocess.run，这里要用 PowerShell 的
@@ -298,24 +306,36 @@ class HidMaestroJoyCon2:
             log.error("启动 HmBridge 失败: %s", exc)
             self._init_failed = True
             return False
-        time.sleep(6)
+        # 不再盲等 6 秒：轮询端口，一开就继续（典型 1.5~3s）。
+        deadline = time.time() + 20.0
+        sock = None
+        while time.time() < deadline:
+            try:
+                sock = socket.create_connection(("127.0.0.1", BRIDGE_PORT), timeout=0.3)
+                break
+            except OSError:
+                time.sleep(0.15)
+        if sock is None:
+            log.error("HmBridge 端口未就绪（%s:%s）", BRIDGE_PORT, "127.0.0.1")
+            self._init_failed = True
+            return False
 
         # 连接并 INIT
         try:
-            s = socket.create_connection(("127.0.0.1", BRIDGE_PORT), timeout=10)
+            s = sock
             s.settimeout(0.3)
             self._sock = s
             self._send("HELLO")
-            self._read_reply(2)
+            self._read_reply(1)
             self._send("INIT")
-            ok = self._wait_ok(12)
+            ok = self._wait_ok(15)
             if not ok:
                 log.error("HmBridge INIT 失败")
                 self._close()
                 self._init_failed = True
                 return False
             self._send("SUB")
-            self._read_reply(1)
+            self._read_reply(0.5)
         except Exception as exc:
             log.error("连接 HmBridge 失败: %s", exc)
             self._close()
@@ -385,12 +405,12 @@ class HidMaestroJoyCon2:
                 self._stick_r = v
 
     def set_imu_raw(self, side: str, raw6: tuple) -> None:
-        from virtual.imu_proc import imu_semantic
-        # ★ 给 HIDMaestro 的是**物理轴语义值**（g / dps），不做轴向重排：
-        #   profile 的 stateBlock 字段名（accelGZ 落在报告 accel_x 位置等）
-        #   本身就是 SDL 的轴重排映射，由 profile + SDL 完成重排。
-        #   之前传 imu()（已重排的报告顺序值）→ 重排两次 → 静止平放被判成立着。
-        sample = imu_semantic(side, raw6)
+        from virtual.imu_proc import imu
+        # ★ 用旧 USB/IP 方案**已验证**的 imu()：输出报告顺序的 wire raw
+        #   （量纲 GYRO_SCALE + 轴向都经实机验证，reports.py 里明确记录了
+        #   "写成 az,ax,ay 会导致体感全程乱转"）。桥接再按 profile 的
+        #   错位映射 + negate 反解成属性值，使报告字节与旧方案逐字节相同。
+        sample = imu(side, raw6)
         with self._lock:
             if side == "left":
                 self._imu_l = tuple(float(v) for v in sample)
@@ -503,30 +523,48 @@ class HidMaestroJoyCon2:
     def _handle_line(self, line: str):
         if not line:
             return
-        if line.startswith("OUT "):
-            # OUT <side> <leftMotor> <rightMotor>
+        if line.startswith("RUMBLE "):
+            # RUMBLE <side> <left4hex> <right4hex>
+            # 桥接只把真机的原始 4 字节震动块送来，解码交给已验证的
+            # rumble_hd.feed_block（内部走 jc1_block_to_jc2：
+            #  SDL 权威振幅表 + 中性判定 + 频率锁 JC2 原生）。
             p = line.split()
             if len(p) >= 4:
-                self._on_rumble(p[1], float(p[2]), float(p[3]))
+                try:
+                    lblock = bytes.fromhex(p[2])
+                    rblock = bytes.fromhex(p[3])
+                except ValueError:
+                    return
+                self._on_jc1_blocks(p[1], lblock, rblock)
         elif line.startswith("RAW "):
-            # RAW <side> <hex>  （原始 output report 兜底）
             p = line.split()
             if len(p) >= 3:
-                self._on_raw_rumble(p[1], bytes.fromhex(p[2]))
+                try:
+                    self._on_jc1_blocks(p[1], bytes.fromhex(p[2])[:4], b"")
+                except ValueError:
+                    pass
 
-    def _on_rumble(self, side: str, left: float, right: float):
-        """HIDMaestro 解码出的震动 → JC2 HD 震动块。"""
-        if left <= 0.001 and right <= 0.001:
+    def _on_jc1_blocks(self, side: str, left: bytes, right: bytes):
+        """把真机 JC1 的 4 字节震动块喂给 HdRumbleSender（原样，不自己解）。
+
+        本侧 JOY-CON 用 `side` 决定喂哪个 sender；块本身用真机左右两块里
+        对应的一块（左半设备用 left，右半设备用 right；两块在
+        joystick-rumble 下通常相同）。
+        """
+        blk = left if side == "L" else right
+        if len(blk) < 4:
+            blk = left if len(left) >= 4 else right
+        if len(blk) < 4:
             return
-        # HIDMaestro 的 0..1 振幅 → HD LRA 块（与 rumble_hd 的 feed_block 同格式）
-        # 高频块 blk[1]=0x80|amp_hi(6bit)，低频块 blk[3]=amp_lo(7bit)+0x40
-        la = max(0, min(127, int(left * 127)))
-        ra = max(0, min(127, int(right * 127)))
-        blk = bytes([0x00, 0x80 | la, 0x00, 0x40 | ra, 0x00])
-        self._feed_hd(side, blk)
+        try:
+            from virtual.rumble_hd import get_sender
+            get_sender("left" if side == "L" else "right").feed_block(blk[:4])
+        except Exception:
+            pass
 
-    def _on_raw_rumble(self, side: str, data: bytes):
-        self._feed_hd(side, data[:4])
+    # 兼容旧入口（外部若还调 _on_rumble）
+    def _on_rumble(self, side: str, left: float, right: float):
+        return
 
     @staticmethod
     def _feed_hd(side: str, blk: bytes):
