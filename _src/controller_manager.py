@@ -118,7 +118,7 @@ class ControllerManager:
             pair.gamepad_side = "both"
             pair.gamepad = HidMaestroJoyCon2(side="both")
             _lg_info("输出：独立 Joy-Con 1（057E:2006/2007，HIDMaestro）")
-            print(f"[输出] {label}（HIDMaestro）", flush=True)
+            print("[输出] 独立 Joy-Con 1（057E:2006/2007，HIDMaestro）", flush=True)
             return
         except Exception as exc:  # noqa: BLE001
             _lg_error(f"输出设备初始化失败: {exc}")
