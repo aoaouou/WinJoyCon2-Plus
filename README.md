@@ -1,6 +1,6 @@
 <div align="center">
 
-# WinJoyCon2-Plus v2.0
+# WinJoyCon2-Plus v2.1
 
 ### 把 Switch 2 的 Joy-Con 2，变成 PC 上无所不能的操控神器
 
@@ -8,7 +8,7 @@
 
 **WinJoyCon2-Plus，堂堂登场！**
 
-[![Version](https://img.shields.io/badge/Version-2.0-brightgreen?style=for-the-badge)](./README.md)
+[![Version](https://img.shields.io/badge/Version-2.1-brightgreen?style=for-the-badge)](./README.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
 [![Controller](https://img.shields.io/badge/Controller-Joy--Con%202-E6007D?style=for-the-badge)](https://www.nintendo.com/us/store/products/joy-con-2/)
 [![Protocol](https://img.shields.io/badge/Backend-HIDMaestro-6f42c1?style=for-the-badge)](https://github.com/BrikWork/HIDMaestro)
@@ -41,6 +41,12 @@
 - NS2 陀螺仪只在个别游戏里当辅助 —— 我们做成了**银河式陀螺仪鼠标**，全系统通用，漂移了一键回中。
 
 **这是把游戏主机的硬件，做成了 PC 上真正通用的输入设备。走的就是这条路。**
+
+## v2.1，堂堂更新！
+
+*v2.1, grandly updated!*
+
+- **GL/GR，堂堂兼容！** 充电握把的两个背键（左手 GLL/GRL、右手 GLR/GRR）现已支持：默认无功能，可在「自定义按键」页映射成任意键，并可像 SL/SR 一样绑定与录制宏（C + 背键触发）。握把背键在 0x05 报告的 buttons byte3（bit1=GL、bit0=GR），照权威位表解析；未接握把时恒为 0，完全不影响原有功能。
 
 ## v2.0，堂堂更新！
 
@@ -103,7 +109,7 @@
 
 **宏指令，堂堂触发！** 一键按下，串好的动作便逐帧还原，无需再手忙脚乱。
 
-- C 键 + SL/SR 触发宏，四个侧键各绑一套
+- C 键 + SL/SR 触发宏，四个侧键各绑一套；**充电握把 GL/GR 背键同样可绑**（C + 背键触发，共八选一）
 - GUI 内录制 / 保存 / 开关，宏与按键配置全部持久化，重启不丢
 - 双手柄模式一键同步切换：手柄 / 鼠标 / 陀螺仪
 
@@ -199,6 +205,12 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 
 **This turns console hardware into a truly universal PC input device. This path, grandly chosen!**
 
+### v2.1, grandly updated!
+
+*v2.1, grandly updated!*
+
+- **GL/GR, grandly supported!** The two grip back buttons (left GLL/GRL, right GLR/GRR) are now supported: unmapped by default, remappable to any key in the Custom Keys page, and recordable as macros just like SL/SR (C + back button to trigger). Grip back buttons live in the 0x05 report's buttons byte3 (bit1=GL, bit0=GR), parsed per the authoritative bit table; with no grip attached they read zero and change nothing.
+
 ### v2.0, grandly updated!
 
 *v2.0, grandly updated!*
@@ -260,7 +272,7 @@ This release rebuilds the output layer on HIDMaestro, tears down the old USB/IP 
 
 **Macros, grandly triggering!** One key press replays the whole recorded sequence, frame by frame.
 
-- C + SL/SR triggers, one macro per side key (four total)
+- C + SL/SR triggers, one macro per side key (four total); **grip GL/GR back buttons work too** (C + back button, eight total)
 - Record / save / toggle in the GUI; macros and mappings all persisted
 - Sync all controllers to one mode: gamepad / mouse / gyro
 

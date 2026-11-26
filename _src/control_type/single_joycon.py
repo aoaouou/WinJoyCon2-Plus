@@ -13,9 +13,16 @@ import time
 import asyncio
 import copy
 from app_paths import app_path, config_path  # noqa: E402
+from virtual.reports import Ns2Bit  # noqa: E402
 
 # Xbox button name to vgamepad mapping
-XBOX_BUTTON_MAP = {}   # 已改用 Joy-Con 原生语义位，此表仅保留兼容
+# 已改用 Joy-Con 原生语义位，此表仅保留兼容；充电握把背键别名走这里。
+XBOX_BUTTON_MAP = {
+    "gll": Ns2Bit.GL_L,
+    "grl": Ns2Bit.GR_L,
+    "glr": Ns2Bit.GL_R,
+    "grr": Ns2Bit.GR_R,
+}
 
 
 def get_default_controls():
@@ -33,6 +40,8 @@ def get_default_controls():
                 "Minus": None,
                 "SLL": None,
                 "SRL": None,
+                "GLL": None,
+                "GRL": None,
                 "Capture": None,
             },
         },
@@ -48,6 +57,8 @@ def get_default_controls():
                 "Plus": None,
                 "SRR": None,
                 "SLR": None,
+                "GLR": None,
+                "GRR": None,
                 "Home": None,
             },
         }
@@ -80,12 +91,21 @@ def get_pair_controls(pair_id: int):
                     srl = parser[section].get('srl_mapping', '')
                     slr = parser[section].get('slr_mapping', '')
                     srr = parser[section].get('srr_mapping', '')
+                    gll = parser[section].get('gll_mapping', '')
+                    grl = parser[section].get('grl_mapping', '')
+                    glr = parser[section].get('glr_mapping', '')
+                    grr = parser[section].get('grr_mapping', '')
                     
                     # Update SL/SR mappings
                     controls["Left"]["0"]["SLL"] = XBOX_BUTTON_MAP.get(sll, None)
                     controls["Left"]["0"]["SRL"] = XBOX_BUTTON_MAP.get(srl, None)
                     controls["Right"]["0"]["SLR"] = XBOX_BUTTON_MAP.get(slr, None)
                     controls["Right"]["0"]["SRR"] = XBOX_BUTTON_MAP.get(srr, None)
+                    # 充电握把 GL/GR mappings（空串 = 未映射）
+                    controls["Left"]["0"]["GLL"] = XBOX_BUTTON_MAP.get(gll, None)
+                    controls["Left"]["0"]["GRL"] = XBOX_BUTTON_MAP.get(grl, None)
+                    controls["Right"]["0"]["GLR"] = XBOX_BUTTON_MAP.get(glr, None)
+                    controls["Right"]["0"]["GRR"] = XBOX_BUTTON_MAP.get(grr, None)
                             
         except Exception as e:
             pass
@@ -103,6 +123,18 @@ def update_sl_sr_mappings_for_pair(pair_id: int, sll: str, srl: str, slr: str, s
         controls["Left"]["0"]["SRL"] = XBOX_BUTTON_MAP.get(srl, None)
         controls["Right"]["0"]["SLR"] = XBOX_BUTTON_MAP.get(slr, None)
         controls["Right"]["0"]["SRR"] = XBOX_BUTTON_MAP.get(srr, None)
+    except Exception as e:
+        pass
+
+
+def update_gl_gr_mappings_for_pair(pair_id: int, gll: str, grl: str, glr: str, grr: str):
+    """Update 充电握把 GL/GR button mappings for a specific pair"""
+    try:
+        controls = get_pair_controls(pair_id)
+        controls["Left"]["0"]["GLL"] = XBOX_BUTTON_MAP.get(gll, None)
+        controls["Left"]["0"]["GRL"] = XBOX_BUTTON_MAP.get(grl, None)
+        controls["Right"]["0"]["GLR"] = XBOX_BUTTON_MAP.get(glr, None)
+        controls["Right"]["0"]["GRR"] = XBOX_BUTTON_MAP.get(grr, None)
     except Exception as e:
         pass
 
@@ -300,6 +332,8 @@ async def update(joycon, side, isInMouse, pair_id: int):
         if b.get("Capture"):  bits |= n.CAPTURE
         if b.get("SLL"):      bits |= n.SL_L
         if b.get("SRL"):      bits |= n.SR_L
+        if b.get("GLL"):      bits |= n.GL_L
+        if b.get("GRL"):      bits |= n.GR_L
         if b.get("A"):        bits |= n.A
         if b.get("B"):        bits |= n.B
         if b.get("X"):        bits |= n.X
@@ -311,6 +345,8 @@ async def update(joycon, side, isInMouse, pair_id: int):
         if b.get("Home"):     bits |= n.HOME
         if b.get("SLR"):      bits |= n.SL_R
         if b.get("SRR"):      bits |= n.SR_R
+        if b.get("GLR"):      bits |= n.GL_R
+        if b.get("GRR"):      bits |= n.GR_R
 
     if hasattr(gamepad, "set_buttons"):
         if side == "Left":
@@ -351,7 +387,9 @@ async def controller_traitement(joycon, side, data, pair_id: int):
             l=bool(b.get("L")), zl=bool(b.get("ZL")),
             r=bool(b.get("R")), zr=bool(b.get("ZR")),
             sll=bool(b.get("SLL")), srl=bool(b.get("SRL")),
-            slr=bool(b.get("SLR")), srr=bool(b.get("SRR")))
+            slr=bool(b.get("SLR")), srr=bool(b.get("SRR")),
+            gll=bool(b.get("GLL")), grl=bool(b.get("GRL")),
+            glr=bool(b.get("GLR")), grr=bool(b.get("GRR")))
         if action:
             mm.mark_consumed(pair_id, action)
         if action.startswith("macro_") and mm.is_macro_enabled(pair_id):

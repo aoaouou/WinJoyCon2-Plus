@@ -10,7 +10,7 @@ import asyncio
 
 # ── 应用标识（1.0 正式版）─────────────────────────────────
 APP_NAME = "WinJoyCon2-Plus"
-APP_VERSION = "2.0"
+APP_VERSION = "2.1"
 APP_TITLE = f"{APP_NAME} v{APP_VERSION} · Joy-Con 2 → Joy-Con 1"
 
 from PyQt5.QtWidgets import (
@@ -102,15 +102,17 @@ class InputSettingsWidget(QWidget):
                 (tr("十字 上"), ["Up"]), (tr("十字 下"), ["Down"]),
                 (tr("十字 左"), ["Left"]), (tr("十字 右"), ["Right"]),
                 (tr("左手柄 SL"), ["SLL"]), (tr("左手柄 SR"), ["SRL"]),
+                (tr("左手柄 GL"), ["GLL"]), (tr("左手柄 GR"), ["GRL"]),
                 (tr("右肩键 R"), ["R"]), (tr("右扳机 ZR"), ["ZR"]),
                 (tr("右摇杆按下 RS"), ["RS"]), (tr("HOME 键"), ["Home"]),
                 ("A", ["A"]), ("B", ["B"]), ("X", ["X"]), ("Y", ["Y"]),
-                (tr("右手柄 SL"), ["SLR"]), (tr("右手柄 SR"), ["SRR"])]
+                (tr("右手柄 SL"), ["SLR"]), (tr("右手柄 SR"), ["SRR"]),
+                (tr("右手柄 GL"), ["GLR"]), (tr("右手柄 GR"), ["GRR"])]
 
     HELP = {
         "mouse": "【鼠标模式说明】\n\n切换：按住右手柄 C 键，再按 R → 右手柄进鼠标模式；按 L → 左手柄进鼠标模式。\n退出：再次按同一组合键（如 C+R）→ 回手柄模式；或长按 C 键 2 秒全部复位。\n\n操作：\n  • 平放手柄滑动 = 移动光标（光学传感器）\n  • 摇杆前/后 = 滚动（推得越狠越快）\n  • 按键功能在「自定义按键」页设置（默认 L/R=左键、ZL/ZR=右键、截图/HOME=中键、十字键或XYAB=前进后退）\n  • 灵敏度四挡 800/1600/3200/6400，默认第2挡\n\n固定功能键（不可自定义、不可录宏）：\n  • 加键 + / 减键 −：永远只调灵敏度挡位\n  • C 键：永远只做模式切换/宏触发\n",
         "gyro": "【陀螺仪鼠标说明 · 超级马力欧银河 NS 版逻辑】\n\n切换：按住 C 键，再按 ZL → 左手柄陀螺仪；按 ZR → 右手柄陀螺仪。\n退出：再次按同一组合键（如 C+ZR）→ 回手柄模式；或长按 C 键 2 秒全部复位。\n\n操作逻辑（银河式）：\n  • 手柄侧放，绕竖直轴左右转动 = 光标水平移动\n  • 绕长轴前后俯仰 = 光标垂直移动\n  • 转动越快光标移动越快，停手即停（角速度积分，非倾斜绝对角度）\n\n因握持姿势与光学鼠标不同，按键功能请在「自定义按键」页单独设置；灵敏度用下方「陀螺仪灵敏度」调节（默认值已按银河手感标定）。",
-        "macro": "【宏系统说明】\n\n开启：勾选下方「启用宏系统」（默认关闭）。\n\n录制：\n  1. 选好宏名称与绑定键（左手柄 SL/SR、右手柄 SL/SR 四选一）\n  2. 点「开始录制」，依次按下想录的动作键\n  3. 点「停止保存」，宏即绑定到该 SL/SR 键\n\n触发：按住 C 键 + 对应 SL/SR 键 → 回放该宏。\n\n所有自定义按键与宏都会自动保存到配置，重启后保留。四个 SL/SR 键可各绑一个宏。",
+        "macro": "【宏系统说明】\n\n开启：勾选下方「启用宏系统」（默认关闭）。\n\n录制：\n  1. 选好宏名称与绑定键（左手柄 SL/SR、右手柄 SL/SR、充电握把背键 GL/GR 八选一）\n  2. 点「开始录制」，依次按下想录的动作键\n  3. 点「停止保存」，宏即绑定到该 SL/SR 键\n\n充电握把背键 GL/GR 也可绑定/录制宏，需连接充电握把。\n\n触发：按住 C 键 + 对应 SL/SR 键 → 回放该宏。\n\n所有自定义按键与宏都会自动保存到配置，重启后保留。四个 SL/SR 键可各绑一个宏。",
     }
 
     def __init__(self, pair_id, parent=None):
@@ -257,7 +259,9 @@ class InputSettingsWidget(QWidget):
         lay.addWidget(QLabel(tr("绑定到 SL/SR 键:")))
         self.macro_bind_combo = QComboBox()
         for label, val in ((tr("左手柄 SL"), "sll"), (tr("左手柄 SR"), "srl"),
-                           (tr("右手柄 SL"), "slr"), (tr("右手柄 SR"), "srr")):
+                           (tr("右手柄 SL"), "slr"), (tr("右手柄 SR"), "srr"),
+                           (tr("左手柄 GL"), "gll"), (tr("左手柄 GR"), "grl"),
+                           (tr("右手柄 GL"), "glr"), (tr("右手柄 GR"), "grr")):
             self.macro_bind_combo.addItem(label, val)
         lay.addWidget(self.macro_bind_combo)
         row = QHBoxLayout()

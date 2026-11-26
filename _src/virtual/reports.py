@@ -33,14 +33,15 @@ class Ns2Bit(IntFlag):
     位顺序按 hid-nintendo.c 的定义归类，而不是按报告字节位置——同一物理按键
     在不同报告里位置不同，语义位只表示"这个键被按下了"。
 
-    这里只收录手柄本体上能按到的键。以下三位**刻意不收**：
+    这里收录手柄本体上能按到的键，以及充电握把的 GL/GR 背键。
+    以下一位**刻意不收**：
 
-      * GR / GL —— 只存在于「Joy-Con 2 充电握把」这个选配外设上，
-                   手柄本体没有背键。内核里 GR/GL 的映射是给握把用的。
       * HEADSET —— U4 的 bit5 是耳机在位检测，只有 Pro Controller 2 有
                    3.5mm 孔；Joy-Con 2 没有耳机孔，这个位永远是 0。
 
-    保留它们的位定义没有好处，反而会让"按键总数"虚高、让人以为手柄上有这些键。
+    GR / GL 只存在于「Joy-Con 2 充电握把」选配外设上；接入握把时按
+    0x05 buttons byte3（bit1=GL、bit0=GR）上报，因此 GL_L/GR_L/GL_R/GR_R
+    单独成位（见下）。未接握把时这些位恒为 0，默认无功能。
     """
     # --- NS2_BTNR_* : Pro 专用报告的右半 ---
     B = 1 << 0
@@ -72,6 +73,13 @@ class Ns2Bit(IntFlag):
     SR_L = 1 << 20
     SL_R = 1 << 21
     SR_R = 1 << 22
+    # --- 充电握把背键 GL / GR（0x05 buttons byte3 = datas[7]）---
+    # 两半手柄通用位表：byte3 的 0x02=GL、0x01=GR。
+    # 与 SL/SR 一样分成左右两组，避免左右互相覆盖。
+    GL_L = 1 << 23
+    GR_L = 1 << 24
+    GL_R = 1 << 25
+    GR_R = 1 << 26
 
 
 def has_sl(bit: "Ns2Bit") -> bool:
@@ -82,6 +90,16 @@ def has_sl(bit: "Ns2Bit") -> bool:
 def has_sr(bit: "Ns2Bit") -> bool:
     """任意一侧的 SR 被按下。"""
     return bool(bit & (Ns2Bit.SR_L | Ns2Bit.SR_R))
+
+
+def has_gl(bit: "Ns2Bit") -> bool:
+    """任意一侧的充电握把 GL 被按下。"""
+    return bool(bit & (Ns2Bit.GL_L | Ns2Bit.GL_R))
+
+
+def has_gr(bit: "Ns2Bit") -> bool:
+    """任意一侧的充电握把 GR 被按下。"""
+    return bool(bit & (Ns2Bit.GR_L | Ns2Bit.GR_R))
 
 
 # --------------------------------------------------------------------------- #

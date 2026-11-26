@@ -77,6 +77,8 @@ _HM_R1 = 1 << 14
 _HM_TRIGGER = 1 << 15
 _HM_SL = 1 << 4
 _HM_SR = 1 << 5
+# 充电握把 GL/GR 背键：虚拟 Joy-Con 1 profile 没有专用位，取 stateBlock
+# 尚未占用的 bit6/bit7；左右半共用同一位（与 SL/SR 左右共用 _HM_SL/SR 同理）。
 _HM_L_HOME = 1 << 12
 # R 半 ABXY（位置名）；slot 标签 #3=Y 却产生位置 A，反之亦然
 # R 半 ABXY → HMButton 位。

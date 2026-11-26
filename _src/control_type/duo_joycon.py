@@ -45,6 +45,11 @@ C_KEY_MAP = dict(C_KEY_TARGETS)
 # JoyCon 上本来叫 LS/RS，这里补上别名，老配置无需迁移即可继续匹配。
 C_KEY_MAP["L3"] = Ns2Bit.LS
 C_KEY_MAP["R3"] = Ns2Bit.RS
+# 充电握把背键 GL/GR 作为映射目标（配置值是小写 gll/grl/glr/grr）
+C_KEY_MAP["gll"] = Ns2Bit.GL_L
+C_KEY_MAP["grl"] = Ns2Bit.GR_L
+C_KEY_MAP["glr"] = Ns2Bit.GL_R
+C_KEY_MAP["grr"] = Ns2Bit.GR_R
 
 
 def get_default_controls():
@@ -67,6 +72,8 @@ def get_default_controls():
             "Capture": Ns2Bit.CAPTURE,
             "SLL": Ns2Bit.SL_L,
             "SRL": Ns2Bit.SR_L,
+            "GLL": Ns2Bit.GL_L,
+            "GRL": Ns2Bit.GR_L,
         },
         "Right": {
             "ZR": Ns2Bit.ZR,
@@ -80,6 +87,8 @@ def get_default_controls():
             "Home": Ns2Bit.HOME,
             "SLR": Ns2Bit.SL_R,
             "SRR": Ns2Bit.SR_R,
+            "GLR": Ns2Bit.GL_R,
+            "GRR": Ns2Bit.GR_R,
         }
     }
 
@@ -110,12 +119,20 @@ def get_pair_controls(pair_id: int):
                     srl = parser[section].get('srl_mapping', '')
                     slr = parser[section].get('slr_mapping', '')
                     srr = parser[section].get('srr_mapping', '')
+                    gll = parser[section].get('gll_mapping', '')
+                    grl = parser[section].get('grl_mapping', '')
+                    glr = parser[section].get('glr_mapping', '')
+                    grr = parser[section].get('grr_mapping', '')
                     
                     # Update mappings
                     controls["Left"]["SLL"] = C_KEY_MAP.get(sll) if sll else Ns2Bit.SL_L
                     controls["Left"]["SRL"] = C_KEY_MAP.get(srl) if srl else Ns2Bit.SR_L
                     controls["Right"]["SLR"] = C_KEY_MAP.get(slr) if slr else Ns2Bit.SL_R
                     controls["Right"]["SRR"] = C_KEY_MAP.get(srr) if srr else Ns2Bit.SR_R
+                    controls["Left"]["GLL"] = C_KEY_MAP.get(gll) if gll else Ns2Bit.GL_L
+                    controls["Left"]["GRL"] = C_KEY_MAP.get(grl) if grl else Ns2Bit.GR_L
+                    controls["Right"]["GLR"] = C_KEY_MAP.get(glr) if glr else Ns2Bit.GL_R
+                    controls["Right"]["GRR"] = C_KEY_MAP.get(grr) if grr else Ns2Bit.GR_R
 
 
         except Exception as e:
@@ -134,6 +151,18 @@ def update_sl_sr_mappings_for_pair(pair_id: int, sll: str, srl: str, slr: str, s
         controls["Left"]["SRL"] = C_KEY_MAP.get(srl) if srl else Ns2Bit.SR_L
         controls["Right"]["SLR"] = C_KEY_MAP.get(slr) if slr else Ns2Bit.SL_R
         controls["Right"]["SRR"] = C_KEY_MAP.get(srr) if srr else Ns2Bit.SR_R
+    except Exception as e:
+        pass  # Silent fail
+
+
+def update_gl_gr_mappings_for_pair(pair_id: int, gll: str, grl: str, glr: str, grr: str):
+    """Update 充电握把 GL/GR button mappings for a specific pair"""
+    try:
+        controls = get_pair_controls(pair_id)
+        controls["Left"]["GLL"] = C_KEY_MAP.get(gll) if gll else Ns2Bit.GL_L
+        controls["Left"]["GRL"] = C_KEY_MAP.get(grl) if grl else Ns2Bit.GR_L
+        controls["Right"]["GLR"] = C_KEY_MAP.get(glr) if glr else Ns2Bit.GL_R
+        controls["Right"]["GRR"] = C_KEY_MAP.get(grr) if grr else Ns2Bit.GR_R
     except Exception as e:
         pass  # Silent fail
 
@@ -457,7 +486,7 @@ def _center_cursor():
 
 
 def _trigger_macro(pair_id: int, trigger_key: str = None):
-    """回放该 pair 指定 SL/SR 键绑定的宏。trigger_key 如 'slr'/'sll'。"""
+    """回放该 pair 指定 SL/SR/GL/GR 键绑定的宏。trigger_key 如 'slr'/'gll'。"""
     cfg = mm.get_config(pair_id)
     binding = cfg.get("macro_bindings", {})
     macros = cfg.get("macros", {})
@@ -595,6 +624,8 @@ async def update(pair_id: int = 0):
             r=bool(rb.get("R")), zr=bool(rb.get("ZR")),
             sll=bool(lb.get("SLL")), srl=bool(lb.get("SRL")),
             slr=bool(rb.get("SLR")), srr=bool(rb.get("SRR")),
+            gll=bool(lb.get("GLL")), grl=bool(lb.get("GRL")),
+            glr=bool(rb.get("GLR")), grr=bool(rb.get("GRR")),
         )
         if combo_action:
             mm.mark_consumed(pair_id, combo_action)   # 本帧该修饰键不触发鼠标动作
@@ -698,6 +729,8 @@ async def update(pair_id: int = 0):
             if b.get("Capture"): left_bits |= n.CAPTURE
             if b.get("SLL"):     left_bits |= n.SL_L
             if b.get("SRL"):     left_bits |= n.SR_L
+            if b.get("GLL"):     left_bits |= n.GL_L
+            if b.get("GRL"):     left_bits |= n.GR_L
 
         # ---- 右手柄 ----
         if state.get('joyconMouseMode') != "Right":
@@ -713,6 +746,8 @@ async def update(pair_id: int = 0):
             if b.get("Home"):    right_bits |= n.HOME
             if b.get("SLR"):     right_bits |= n.SL_R
             if b.get("SRR"):     right_bits |= n.SR_R
+            if b.get("GLR"):     right_bits |= n.GL_R
+            if b.get("GRR"):     right_bits |= n.GR_R
             # C 键（GameChat）已专职切换鼠标/手柄模式，不再映射为手柄按键。
 
         if hasattr(gamepad, "set_buttons"):
