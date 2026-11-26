@@ -105,9 +105,9 @@ print("=" * 78)
 print("E. 灵敏度挡位")
 print("=" * 78)
 mm.get_config(1)["mouse_dpi_index"] = 1
-check("默认第2挡(现2.0x)", mm.get_dpi_index(1) == 1 and mm.get_dpi_scale(1) == 2.0)
-check("1挡=1.0x(整体前移后)", mm.DPI_LEVELS[0] == (800, 1.0))
-check("4挡=8.0x(新增)", mm.DPI_LEVELS[3] == (6400, 8.0))
+check("默认第2挡(现1.0x)", mm.get_dpi_index(1) == 1 and mm.get_dpi_scale(1) == 1.0)
+check("1挡=0.5x(整体降一档)", mm.DPI_LEVELS[0] == (400, 0.5))
+check("4挡=4.0x", mm.DPI_LEVELS[3] == (3200, 4.0))
 # 双柄：升到底停住
 mm._dpi_prev.pop(1, None)
 for _ in range(5):

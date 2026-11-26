@@ -74,10 +74,10 @@ def default_keymap() -> dict:
 
 
 # ── 灵敏度挡位 ───────────────────────────────────────────────────────────────
-# 2026-11-20 用户反馈原 1 挡(400/0.5x)太低：整体挡位前移一档。
-# 现在 1挡=原2挡、2挡=原3挡、3挡=原4挡、4挡=新增(6400/8x)。
-# 默认第 2 挡（索引1）= 1600 DPI / 2.0x。
-DPI_LEVELS = ((800, 1.0), (1600, 2.0), (3200, 4.0), (6400, 8.0))
+# 历史：原 1 挡(400/0.5x) → 2026-11-20 嫌低整体前移 → 2026-11-26 用户反馈
+# 「每个挡位都太高」，故整体降一档回到 400 起，默认仍是第 2 挡（索引1）。
+# 现在：1挡 400/0.5x、2挡 800/1.0x、3挡 1600/2.0x、4挡 3200/4.0x。
+DPI_LEVELS = ((400, 0.5), (800, 1.0), (1600, 2.0), (3200, 4.0))
 DPI_DEFAULT_INDEX = 1
 
 # ── 每组 pair 默认配置 ───────────────────────────────────────────────────────
@@ -261,8 +261,19 @@ def set_all_mode(mode: str, pair_count: int = 4, persist: bool = True):
 
 
 def get_keymap(pair_id: int, mode: str) -> dict:
+    """取该模式的按键映射。
+
+    ★ 用默认 keymap 做**增量补全**：老版本保存的配置里没有后来新增的
+      键（如 L3/R3 回中心），若不补全，这些功能对老配置永久失效。
+      用户显式设过 ""（不映射）的键保留原值，不被默认覆盖。
+    """
     cfg = get_config(pair_id)
-    return cfg["keymap_gyro" if mode == MODE_GYRO else "keymap_mouse"]
+    key = "keymap_gyro" if mode == MODE_GYRO else "keymap_mouse"
+    saved = cfg.get(key) or {}
+    merged = default_keymap()
+    for k, v in saved.items():
+        merged[k] = v          # 用户自定义优先（含显式 "" 表示不映射）
+    return merged
 
 
 def set_keymap(pair_id: int, mode: str, keymap: dict, persist: bool = True):

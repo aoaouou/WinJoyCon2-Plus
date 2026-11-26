@@ -138,7 +138,10 @@ class JoyConLeft:
         self.buttons["Down"] = bool(btnDatas & 0x0001)
         self.buttons["Up"] = bool(btnDatas & 0x0002)
         self.buttons["Right"] = bool(btnDatas & 0x0004)
-        self.buttons["L3"] = bool(btnDatas & 0x0800)
+        # 摇杆按下（L3）：权威映射 NS2_BTNL_LS = raw_data[3] 的 BIT(7)
+        # （virtual/reports.py:200 `(3, 0x80, Ns2Bit.LS)`）。
+        # 注意不能用 _fr.buttons：它从 data[4] 起组装，byte3 不在其中。
+        self.buttons["L3"] = bool(len(datas) > 3 and (datas[3] & 0x80))
         self.buttons["Capture"] = bool(btnDatas & 0x2000)
 
         # 摇杆：从统一解析层取**按侧**的值
