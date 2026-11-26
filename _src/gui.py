@@ -10,7 +10,7 @@ import asyncio
 
 # ── 应用标识（1.0 正式版）─────────────────────────────────
 APP_NAME = "WinJoyCon2-Plus"
-APP_VERSION = "1.2"
+APP_VERSION = "2.0"
 APP_TITLE = f"{APP_NAME} v{APP_VERSION} · Joy-Con 2 → Joy-Con 1"
 
 from PyQt5.QtWidgets import (
