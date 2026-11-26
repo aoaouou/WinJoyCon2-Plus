@@ -46,7 +46,7 @@
 
 *v2.1, grandly updated!*
 
-- **GL/GR，堂堂兼容！** 充电握把的两个背键（左手 GLL/GRL、右手 GLR/GRR）现已支持：默认无功能，可在「自定义按键」页映射成任意键，并可像 SL/SR 一样绑定与录制宏（C + 背键触发）。握把背键在 0x05 报告的 buttons byte3（bit1=GL、bit0=GR），照权威位表解析；未接握把时恒为 0，完全不影响原有功能。
+- **GL/GR，堂堂兼容！** 充电握把的两个背键 GL（左）/GR（右）—— 全局一对，握装哪只手柄都能读：默认无功能，可在「自定义按键」页映射成任意键，并可像 SL/SR 一样绑定与录制宏（C + 背键触发）。握把背键在 0x05 报告的 buttons byte3（bit1=GL、bit0=GR），照权威位表解析；未接握把时恒为 0，完全不影响原有功能。
 
 ## v2.0，堂堂更新！
 
@@ -109,7 +109,7 @@
 
 **宏指令，堂堂触发！** 一键按下，串好的动作便逐帧还原，无需再手忙脚乱。
 
-- C 键 + SL/SR 触发宏，四个侧键各绑一套；**充电握把 GL/GR 背键同样可绑**（C + 背键触发，共八选一）
+- C 键 + SL/SR 触发宏，四个侧键各绑一套；**充电握把 GL/GR 背键同样可绑**（C + 背键触发，共六选一）
 - GUI 内录制 / 保存 / 开关，宏与按键配置全部持久化，重启不丢
 - 双手柄模式一键同步切换：手柄 / 鼠标 / 陀螺仪
 
@@ -209,7 +209,7 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 
 *v2.1, grandly updated!*
 
-- **GL/GR, grandly supported!** The two grip back buttons (left GLL/GRL, right GLR/GRR) are now supported: unmapped by default, remappable to any key in the Custom Keys page, and recordable as macros just like SL/SR (C + back button to trigger). Grip back buttons live in the 0x05 report's buttons byte3 (bit1=GL, bit0=GR), parsed per the authoritative bit table; with no grip attached they read zero and change nothing.
+- **GL/GR, grandly supported!** The two grip back buttons (a global pair: GL left, GR right; readable from either Joy-Con) are now supported: unmapped by default, remappable to any key in the Custom Keys page, and recordable as macros just like SL/SR (C + back button to trigger). Grip back buttons live in the 0x05 report's buttons byte3 (bit1=GL, bit0=GR), parsed per the authoritative bit table; with no grip attached they read zero and change nothing.
 
 ### v2.0, grandly updated!
 
@@ -272,7 +272,7 @@ This release rebuilds the output layer on HIDMaestro, tears down the old USB/IP 
 
 **Macros, grandly triggering!** One key press replays the whole recorded sequence, frame by frame.
 
-- C + SL/SR triggers, one macro per side key (four total); **grip GL/GR back buttons work too** (C + back button, eight total)
+- C + SL/SR triggers, one macro per side key (four total); **grip GL/GR back buttons work too** (C + back button, six total)
 - Record / save / toggle in the GUI; macros and mappings all persisted
 - Sync all controllers to one mode: gamepad / mouse / gyro
 

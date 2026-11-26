@@ -29,8 +29,8 @@ class JoyConRight:
             "Plus": False,
             "SLR": False,
             "SRR": False,
-            "GLR": False,   # 充电握把 GL（0x05 buttons byte3 = datas[7] bit1）
-            "GRR": False,   # 充电握把 GR（0x05 buttons byte3 = datas[7] bit0）
+            "GL": False,    # 充电握把 GL（全局一对；datas[7] bit1）
+            "GR": False,    # 充电握把 GR（全局一对；datas[7] bit0）
             "Y": False,
             "B": False,
             "X": False,
@@ -129,8 +129,8 @@ class JoyConRight:
         self.buttons["SLR"] = bool(btnDatas & 0x2000)
         self.buttons["SRR"] = bool(btnDatas & 0x1000)
         # 充电握把背键在 0x05 通用报告的 buttons byte3 = datas[7]：bit1=GL、bit0=GR
-        self.buttons["GLR"] = bool(len(datas) > 7 and (datas[7] & 0x02))
-        self.buttons["GRR"] = bool(len(datas) > 7 and (datas[7] & 0x01))
+        self.buttons["GL"] = bool(len(datas) > 7 and (datas[7] & 0x02))
+        self.buttons["GR"] = bool(len(datas) > 7 and (datas[7] & 0x01))
         self.buttons["Y"] = bool(btnDatas & 0x0100)
         self.buttons["B"] = bool(btnDatas & 0x0400)
         self.buttons["X"] = bool(btnDatas & 0x0200)

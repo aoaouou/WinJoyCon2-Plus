@@ -40,8 +40,8 @@ class Ns2Bit(IntFlag):
                    3.5mm 孔；Joy-Con 2 没有耳机孔，这个位永远是 0。
 
     GR / GL 只存在于「Joy-Con 2 充电握把」选配外设上；接入握把时按
-    0x05 buttons byte3（bit1=GL、bit0=GR）上报，因此 GL_L/GR_L/GL_R/GR_R
-    单独成位（见下）。未接握把时这些位恒为 0，默认无功能。
+    0x05 buttons byte3（bit1=GL、bit0=GR）上报。GL/GR 是**全局一对**背键
+    （GL 左、GR 右），不是每只手柄各一对，故只设 GL/GR 两位。未接握把恒 0。
     """
     # --- NS2_BTNR_* : Pro 专用报告的右半 ---
     B = 1 << 0
@@ -74,12 +74,9 @@ class Ns2Bit(IntFlag):
     SL_R = 1 << 21
     SR_R = 1 << 22
     # --- 充电握把背键 GL / GR（0x05 buttons byte3 = datas[7]）---
-    # 两半手柄通用位表：byte3 的 0x02=GL、0x01=GR。
-    # 与 SL/SR 一样分成左右两组，避免左右互相覆盖。
-    GL_L = 1 << 23
-    GR_L = 1 << 24
-    GL_R = 1 << 25
-    GR_R = 1 << 26
+    # byte3 的 0x02=GL、0x01=GR。全局一对，不分左右。
+    GL = 1 << 23
+    GR = 1 << 24
 
 
 def has_sl(bit: "Ns2Bit") -> bool:
@@ -93,13 +90,13 @@ def has_sr(bit: "Ns2Bit") -> bool:
 
 
 def has_gl(bit: "Ns2Bit") -> bool:
-    """任意一侧的充电握把 GL 被按下。"""
-    return bool(bit & (Ns2Bit.GL_L | Ns2Bit.GL_R))
+    """充电握把 GL 被按下。"""
+    return bool(bit & Ns2Bit.GL)
 
 
 def has_gr(bit: "Ns2Bit") -> bool:
-    """任意一侧的充电握把 GR 被按下。"""
-    return bool(bit & (Ns2Bit.GR_L | Ns2Bit.GR_R))
+    """充电握把 GR 被按下。"""
+    return bool(bit & Ns2Bit.GR)
 
 
 # --------------------------------------------------------------------------- #

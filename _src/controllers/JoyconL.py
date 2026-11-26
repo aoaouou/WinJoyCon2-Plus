@@ -34,8 +34,8 @@ class JoyConLeft:
             "Minus": False,
             "SLL": False,
             "SRL": False,
-            "GLL": False,   # 充电握把 GL（0x05 buttons byte3 = datas[7] bit1）
-            "GRL": False,   # 充电握把 GR（0x05 buttons byte3 = datas[7] bit0）
+            "GL": False,    # 充电握把 GL（全局一对；datas[7] bit1）
+            "GR": False,    # 充电握把 GR（全局一对；datas[7] bit0）
             "Left": False,
             "Down": False,
             "Up": False,
@@ -134,8 +134,8 @@ class JoyConLeft:
         self.buttons["SLL"] = bool(btnDatas & 0x0020)
         self.buttons["SRL"] = bool(btnDatas & 0x0010)
         # 充电握把背键在 0x05 通用报告的 buttons byte3 = datas[7]：bit1=GL、bit0=GR
-        self.buttons["GLL"] = bool(len(datas) > 7 and (datas[7] & 0x02))
-        self.buttons["GRL"] = bool(len(datas) > 7 and (datas[7] & 0x01))
+        self.buttons["GL"] = bool(len(datas) > 7 and (datas[7] & 0x02))
+        self.buttons["GR"] = bool(len(datas) > 7 and (datas[7] & 0x01))
         self.buttons["Minus"] = bool(btnDatas & 0x0100)
         self.buttons["L"] = bool(btnDatas & 0x0040)
         self.buttons["ZL"] = bool(btnDatas & 0x0080)

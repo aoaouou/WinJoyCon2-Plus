@@ -48,9 +48,9 @@ ACTIONS = (ACT_NONE, ACT_LEFT, ACT_RIGHT, ACT_MIDDLE, ACT_FWD, ACT_BACK,
 
 # 可映射的按钮语义（左右手柄通用名，实际取各自 buttons 字典）
 LEFT_BUTTONS = ("Up", "Down", "Left", "Right", "L", "ZL", "Minus", "LS",
-                "Capture", "SLL", "SRL", "GLL", "GRL")
+                "Capture", "SLL", "SRL")
 RIGHT_BUTTONS = ("Up", "Down", "Left", "Right", "R", "ZR", "Plus", "RS",
-                 "Home", "GameChat", "SLR", "SRR", "GLR", "GRR")
+                 "Home", "GameChat", "SLR", "SRR")
 
 # ── 默认 keymap（沿用既有行为）───────────────────────────────────────────────
 # 每套 keymap: {按钮语义: 动作}。鼠标与陀螺仪鼠标共用同一套默认。
@@ -330,12 +330,12 @@ import time as _time
 
 C_HOLD_RESET_SEC = 2.0     # 长按 C 多久回手柄
 _MOD_KEYS = ("l", "zl", "r", "zr", "sll", "srl", "slr", "srr",
-             "gll", "grl", "glr", "grr")
+             "gl", "gr")
 
 
 def feed_combo(pair_id: int, c: bool, l: bool, zl: bool, r: bool, zr: bool,
                sll: bool, srl: bool, slr: bool, srr: bool,
-               gll: bool, grl: bool, glr: bool, grr: bool) -> str:
+               gl: bool, gr: bool) -> str:
     """喂入 C 键及修饰键当前状态，返回本次触发的动作描述。
 
     规则：
@@ -351,7 +351,7 @@ def feed_combo(pair_id: int, c: bool, l: bool, zl: bool, r: bool, zr: bool,
 
     cur = {"l": l, "zl": zl, "r": r, "zr": zr,
            "sll": sll, "srl": srl, "slr": slr, "srr": srr,
-           "gll": gll, "grl": grl, "glr": glr, "grr": grr}
+           "gl": gl, "gr": gr}
 
     # C 按下沿：记录时刻
     if c and not prev["c"]:
@@ -363,15 +363,14 @@ def feed_combo(pair_id: int, c: bool, l: bool, zl: bool, r: bool, zr: bool,
     action = ""
     if c:
         # 1) 修饰键按下沿（C 已按住）→ 组合键
-        for k in ("sll", "srl", "slr", "srr", "gll", "grl", "glr", "grr",
+        for k in ("sll", "srl", "slr", "srr", "gl", "gr",
                   "l", "zl", "r", "zr"):
             if cur[k] and not prev[k]:
                 mapping = {
                     "sll": "macro_sll", "srl": "macro_srl",
                     "slr": "macro_slr", "srr": "macro_srr",
                     # 充电握把背键只触发宏，不参与模式切换（不进 side_target）
-                    "gll": "macro_gll", "grl": "macro_grl",
-                    "glr": "macro_glr", "grr": "macro_grr",
+                    "gl": "macro_gl", "gr": "macro_gr",
                     "l": "left_mouse", "zl": "left_gyro",
                     "r": "right_mouse", "zr": "right_gyro",
                 }

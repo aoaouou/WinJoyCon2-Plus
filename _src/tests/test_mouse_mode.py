@@ -24,9 +24,9 @@ def check(name, cond, detail=""):
 
 
 def feed(pair, c=0, l=0, zl=0, r=0, zr=0, sll=0, srl=0, slr=0, srr=0,
-         gll=0, grl=0, glr=0, grr=0):
+         gl=0, gr=0):
     return mm.feed_combo(pair, c, l, zl, r, zr, sll, srl, slr, srr,
-                         gll, grl, glr, grr)
+                         gl, gr)
 
 
 print("=" * 78)
@@ -85,10 +85,8 @@ print("=" * 78)
 check("C+SLR→macro_slr", feed(1, 0) == "" and feed(1, 1, slr=1) == "macro_slr")
 check("C+SLL→macro_sll", feed(1, 0) == "" and feed(1, 1, sll=1) == "macro_sll")
 # 充电握把 GL/GR 只触发宏，不切换模式：触发后无需再按一次复位
-check("C+GLR→macro_glr", feed(1, 0) == "" and feed(1, 1, glr=1) == "macro_glr")
-check("C+GLL→macro_gll", feed(1, 0) == "" and feed(1, 1, gll=1) == "macro_gll")
-check("C+GRL→macro_grl", feed(1, 0) == "" and feed(1, 1, grl=1) == "macro_grl")
-check("C+GRR→macro_grr", feed(1, 0) == "" and feed(1, 1, grr=1) == "macro_grr")
+check("C+GL→macro_gl", feed(1, 0) == "" and feed(1, 1, gl=1) == "macro_gl")
+check("C+GR→macro_gr", feed(1, 0) == "" and feed(1, 1, gr=1) == "macro_gr")
 
 print()
 print("=" * 78)

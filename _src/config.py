@@ -36,10 +36,8 @@ class Config:
         "srl_mapping": "",      # SR Left mapping (empty = unmapped)
         "slr_mapping": "",      # SL Right mapping (empty = unmapped)
         "srr_mapping": "",      # SR Right mapping (empty = unmapped)
-        "gll_mapping": "",      # 左手柄 GL (grip) mapping (empty = unmapped)
-        "grl_mapping": "",      # 左手柄 GR (grip) mapping (empty = unmapped)
-        "glr_mapping": "",      # 右手柄 GL (grip) mapping (empty = unmapped)
-        "grr_mapping": "",      # 右手柄 GR (grip) mapping (empty = unmapped)
+        "gl_mapping": "",       # 充电握把 GL (grip) mapping (empty = unmapped)
+        "gr_mapping": "",       # 充电握把 GR (grip) mapping (empty = unmapped)
     }
 
     def __new__(cls, config_path=_cfg_path()):
@@ -97,10 +95,8 @@ class Config:
             self.slr_mapping = controller_section.get('slr_mapping', self.slr_mapping)
             self.srr_mapping = controller_section.get('srr_mapping', self.srr_mapping)
             # 充电握把背键 GL/GR mappings (empty = unmapped)
-            self.gll_mapping = controller_section.get('gll_mapping', self.gll_mapping)
-            self.grl_mapping = controller_section.get('grl_mapping', self.grl_mapping)
-            self.glr_mapping = controller_section.get('glr_mapping', self.glr_mapping)
-            self.grr_mapping = controller_section.get('grr_mapping', self.grr_mapping)
+            self.gl_mapping = controller_section.get('gl_mapping', self.gl_mapping)
+            self.gr_mapping = controller_section.get('gr_mapping', self.gr_mapping)
         else:
             print(f"Section 'Controller' not found in {self._config_path}. Using default values.")
             self._init_defaults()
@@ -132,10 +128,8 @@ class Config:
             "srl_mapping": self.srl_mapping,
             "slr_mapping": self.slr_mapping,
             "srr_mapping": self.srr_mapping,
-            "gll_mapping": self.gll_mapping,
-            "grl_mapping": self.grl_mapping,
-            "glr_mapping": self.glr_mapping,
-            "grr_mapping": self.grr_mapping,
+            "gl_mapping": self.gl_mapping,
+            "gr_mapping": self.gr_mapping,
         }
 
 
