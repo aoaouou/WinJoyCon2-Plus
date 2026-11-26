@@ -1,23 +1,20 @@
-"""jc2bridge —— 把 Switch 2 的 Joy-Con 2 / Pro Controller 2 模拟成 Switch 1 手柄。
+"""输入侧工具 —— 把 Switch 2 的 Joy-Con 2 输入转成语义状态。
 
-组成：
-    ble_source   读 Joy-Con 2 的 BLE 输入（GATT notify）
-    reports      报告解析 / 编码（Joy-Con 2 -> PadState -> Pro1 / JoyCon1）
-    descriptors  USB 描述符（真实硬件字节）
-    usbip        最小 usbip 服务端（把虚拟 USB 设备挂到系统）
-    hid_function HID 类请求 + 子命令应答
-    bridge       两者粘合，含 usbip attach 与状态输出
+输出层统一走 hidmaestro_out.py（HIDMaestro 独立 JoyCon1），旧的 USB/IP
+输出层（vjoy_out / usbip / bridge / hid_function / descriptors）已彻底删除。
+
+保留的组成：
+    reports      报告解析 / 编码（Joy-Con 2 -> PadState -> 按键位）
+    jc2_frame    Joy-Con 2 BLE 帧解析
+    imu_proc     传感器量纲/轴向换算（imu_semantic 供 HIDMaestro 用）
+    rumble_hd    HD 震动块编码（发给真手柄）
+    scroll       滚轮
+    hidmaestro_out  HIDMaestro 输出层
 """
 from .reports import PadState, Ns2Bit, JoyConEncoder
-from .descriptors import DEVICES, DEVICE_JOYCON_L, DEVICE_JOYCON_R
-from .usbip import ServerConfig, UsbIpServer, ExportDevice
-from .hid_function import Switch1HidFunction
 
 __all__ = [
     "PadState", "Ns2Bit", "JoyConEncoder",
-    "DEVICES", "DEVICE_JOYCON_L", "DEVICE_JOYCON_R",
-    "ServerConfig", "UsbIpServer", "ExportDevice", "Switch1HidFunction",
-    "JoyCon2Source", "scan",
 ]
 
 __version__ = "0.1.0"

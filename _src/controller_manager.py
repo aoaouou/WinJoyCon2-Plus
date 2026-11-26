@@ -39,7 +39,7 @@ class ControllerPair:
     pair_id: int = 0
     left: JoyConInfo = field(default_factory=lambda: JoyConInfo(side="Left"))
     right: JoyConInfo = field(default_factory=lambda: JoyConInfo(side="Right"))
-    gamepad: Optional[object] = None    # VirtualJoyCon1
+    gamepad: Optional[object] = None    # HidMaestroJoyCon2（HIDMaestro 输出层）
     mode: ControllerMode = ControllerMode.DISCONNECTED
     led_player: int = 1
     # joycon1 输出模式下要决定建左手柄还是右手柄

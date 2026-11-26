@@ -700,10 +700,10 @@ class ControllerPairTab(QWidget):
     def _refresh_connect_mode(self):
         """1.1：左右未认清时禁用一键连接，强制走分开连接。"""
         try:
-            import usbip_setup
-            calibrated = usbip_setup.sides_calibrated()
+            import config
+            calibrated = config.sides_calibrated()
         except Exception:
-            calibrated = True   # 模块异常时不阻挡用户
+            calibrated = True   # 异常时不阻挡用户
         self.add_btn.setEnabled(bool(calibrated))
         if hasattr(self, "add_separate_btn"):
             # 分开连接永远可用：随时可纠正选错的左右，不限首次
@@ -1400,24 +1400,9 @@ class Joy2WinGUI(QMainWindow):
         
         main_layout.addWidget(self.tab_widget)
 
-        # 1.1 USB/IP 状态条 + 常驻安装按钮（误删后可随时重装）
-        import usbip_setup as _us
-        usbip_bar = QHBoxLayout()
-        self.usbip_status = QLabel()
-        self.usbip_status.setStyleSheet("color:#5c2340;")
-        usbip_bar.addWidget(self.usbip_status)
-        usbip_bar.addStretch()
-        self.install_usbip_btn = QPushButton(
-            tr("🔧 一键安装 USB/IP") if _us.is_usbip_installed() is False
-            else tr("🔧 重装/修复 USB/IP"))
-        self.install_usbip_btn.setStyleSheet(
-            "QPushButton { background:#ffd9e9; color:#5c2340; border:1px solid #f3a8c9;"
-            " border-radius:5px; padding:4px 12px; }"
-            "QPushButton:hover { background:#ffb8d8; }")
-        self.install_usbip_btn.clicked.connect(self.on_install_usbip)
-        usbip_bar.addWidget(self.install_usbip_btn)
-
         # 重置左右记忆：纯净测试 / 纠正选错左右
+        usbip_bar = QHBoxLayout()
+        usbip_bar.addStretch()
         self.reset_sides_btn = QPushButton(tr("🧹 重置左右记忆"))
         self.reset_sides_btn.setStyleSheet(
             "QPushButton { background:#fff0f7; color:#5c2340; border:1px solid #f3a8c9;"
@@ -1429,7 +1414,6 @@ class Joy2WinGUI(QMainWindow):
         usbip_bar_w = QWidget()
         usbip_bar_w.setLayout(usbip_bar)
         main_layout.addWidget(usbip_bar_w)
-        self._refresh_usbip_status()
 
         # Status bar
         self.statusBar().showMessage(tr("就绪 - 点击「一键连接手柄」自动连上左右两只 Joy-Con 2"))
@@ -1505,34 +1489,6 @@ class Joy2WinGUI(QMainWindow):
         except Exception as e:  # noqa: BLE001
             warning(f"托盘切换模式失败: {e}")
 
-    def _refresh_usbip_status(self):
-        import usbip_setup as _us
-        ok = _us.is_usbip_installed()
-        txt = (_us.I18N["usbip_ok_zh"] if i18n.LANG == "zh" else _us.I18N["usbip_ok_en"]) if ok \
-            else (_us.I18N["usbip_missing_zh"] if i18n.LANG == "zh" else _us.I18N["usbip_missing_en"])
-        self.usbip_status.setText(("✅ " if ok else "⚠ ") + txt)
-        self.usbip_status.setStyleSheet(
-            "color:#2a8a4a;" if ok else "color:#c4407c;")
-
-    def on_install_usbip(self):
-        """一键安装/重装 USB/IP。"""
-        import usbip_setup as _us
-        if _us.is_usbip_installed():
-            reply = QMessageBox.question(
-                self,
-                "USB/IP" if i18n.LANG == "en" else "USB/IP",
-                ("USB/IP is already installed. Reinstall anyway?"
-                 if i18n.LANG == "en" else "USB/IP 已安装，是否仍要重新安装？"),
-                QMessageBox.Yes | QMessageBox.No)
-            if reply == QMessageBox.No:
-                return
-        ok, msg = _us.install_usbip()
-        if i18n.LANG == "en":
-            QMessageBox.information(self, "Install USB/IP", msg)
-        else:
-            QMessageBox.information(self, "安装 USB/IP", msg)
-        QTimer.singleShot(1500, self._refresh_usbip_status)
-
     def on_reset_sides(self):
         """清空左右记忆 → 恢复纯净状态，重新走分开连接。"""
         reply = QMessageBox.question(
@@ -1541,8 +1497,8 @@ class Joy2WinGUI(QMainWindow):
             tr("重置会清除已记住的左右手柄，确定吗？"),
             QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
-            import usbip_setup as _us
-            ok, msg = _us.reset_known_sides()
+            import config
+            ok, msg = config.reset_known_sides()
             if ok:
                 self._refresh_all_connect_modes()
             QMessageBox.information(
@@ -1551,16 +1507,25 @@ class Joy2WinGUI(QMainWindow):
                 msg)
 
     def check_first_run(self):
-        """1.1 首次启动须知：弹一次，说明左右分开连接 + USB/IP。"""
-        import usbip_setup as _us
-        if _us.first_run_done():
+        """首次启动须知：弹一次，说明左右分开连接。"""
+        import config
+        if config.first_run_done():
             return
-        lang = i18n.LANG
-        title = _us.I18N["notice_title_en" if lang == "en" else "notice_title_zh"]
-        body = _us.I18N["notice_en" if lang == "en" else "notice_zh"]
+        if i18n.LANG == "en":
+            title = "First time setup"
+            body = ("Connect Joy-Con 2 via Bluetooth (press SYNC).\n\n"
+                    "Use 'One-click connect' for a remembered pair, or\n"
+                    "'Separate connect' to choose left/right manually.\n\n"
+                    "The two Joy-Cons appear as native Joy-Con 1 on PC and\n"
+                    "are combined automatically by the platform.")
+        else:
+            title = "首次使用须知"
+            body = ("通过蓝牙连接 Joy-Con 2（按 SYNC 键）。\n\n"
+                    "已记住左右手柄 → 点「一键连接」；\n"
+                    "需要纠正/首次配对 → 点「分开连接」手动选左右。\n\n"
+                    "两只手柄在 PC 上呈现为原生 Joy-Con 1，平台会自动组合。")
         QMessageBox.information(self, title, body)
-        _us.mark_first_run_done()
-        self._refresh_usbip_status()
+        config.mark_first_run_done()
         self._refresh_all_connect_modes()
 
     def on_language_changed(self, index):
@@ -1997,24 +1962,10 @@ def main():
     #   启动时清理覆盖了所有退出方式：无论上次怎么没的，
     #   这次启动都会先扫干净再建新设备。
     #
-    # ★★ 2026-11-19 重大修复：必须先 detach 所有 usbip **活动端口** ★★
-    #
-    # 之前这里只清"幽灵 PnP 节点"（count_ghosts），**完全没管 usbip port**。
-    # 于是上次被强杀后残留的活动端口还在，本次启动又在同一端口上再 attach
-    # 一份 → 同一只手柄被导出两次（实测出现 Port01=R、Port02=R 重复），
-    # SDL/模拟器枚举到重复设备 → 方向错乱、卡顿、甚至失效。
-    #
-    # 现在顺序固定为：
-    #   ① detach 所有 usbip 活动端口（消掉重复导出，无需提权）
-    #   ② 清幽灵 PnP 节点（需提权，失败静默）
-    # 两步都在创建新设备之前完成。
+    # 输出层已改为 HIDMaestro：只需清残留的 HmBridge 进程与幽灵 PnP 节点，
+    # 旧的 usbip 端口 detach 已随 USB/IP 一起删除。
     try:
         import device_cleanup as _dc
-        # ① 先断开所有活动端口 —— 这是重复导出的直接来源
-        _detached = _dc.detach_all_usbip()
-        if _detached:
-            info(f"[启动清理] 已 detach {_detached} 个残留 usbip 端口")
-        # ② 再清幽灵节点
         _n = _dc.count_ghosts()
         if _n:
             info(f"[启动清理] 发现 {_n} 个上次残留节点，开始清理…")

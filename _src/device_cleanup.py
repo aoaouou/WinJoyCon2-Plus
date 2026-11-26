@@ -46,49 +46,6 @@ def _run_ps(script: str, timeout: int = 20) -> str:
         return ""
 
 
-def _find_usbip() -> str | None:
-    try:
-        from virtual.bridge import find_usbip
-        return find_usbip()
-    except Exception:
-        return None
-
-
-def detach_all_usbip() -> int:
-    """detach 所有 usbip 端口。返回处理数。无需管理员。"""
-    exe = _find_usbip()
-    if not exe:
-        return 0
-
-    ports: list[str] = []
-    try:
-        from hidden_exec import run_hidden
-        out = run_hidden([exe, "port"], timeout=10).stdout
-        for line in out.splitlines():
-            line = line.strip()
-            if line.lower().startswith("port"):
-                head = line.split(":")[0]
-                num = head.replace("Port", "").strip()
-                if num.isdigit():
-                    ports.append(num.lstrip("0") or "0")
-    except Exception:
-        return 0
-
-    n = 0
-    for p in ports:
-        for args in ([exe, "detach", "--port", p],
-                     [exe, "detach", "-p", p]):
-            try:
-                from hidden_exec import run_hidden
-                r = run_hidden(args, timeout=8)
-                if r.returncode == 0:
-                    n += 1
-                    break
-            except Exception:
-                pass
-    return n
-
-
 def count_unknown() -> int:
     """统计 Status=Unknown 的 Nintendo 设备（真幽灵）。"""
     out = _run_ps(
@@ -193,13 +150,6 @@ def cleanup_on_exit() -> None:
         run_hidden(["taskkill", "/F", "/IM", "HmBridge.exe"], timeout=8)
     except Exception:
         pass
-
-    try:
-        n = detach_all_usbip()
-        if n:
-            info(f"[清理] 已 detach {n} 个 usbip 端口")
-    except Exception as e:
-        warning(f"[清理] detach 失败: {type(e).__name__}: {e}")
 
     try:
         # 先看有多少是 Unknown（真幽灵）——活跃设备不该动

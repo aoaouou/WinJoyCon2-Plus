@@ -335,25 +335,15 @@ print("=" * 76)
 print("F. 源码接线（防止被改回去）")
 print("=" * 76)
 
-vj_src = (ROOT / "virtual" / "vjoy_out.py").read_text(encoding="utf-8")
-check("vjoy_out 有 _make_rumble_cb", "_make_rumble_cb" in vj_src)
-check("vjoy_out 调 get_sender().feed_block", "feed_block" in vj_src)
-assigns = [ln for ln in vj_src.splitlines()
-           if ln.strip().startswith("hid.rumble_cb =")]
-check("两处 rumble_cb 赋值都走新回调",
-      len(assigns) == 2 and all("_make_rumble_cb" in ln for ln in assigns),
-      str(assigns))
-code_lines = [ln for ln in vj_src.splitlines()
-              if "min(255, blk[1])" in ln and not ln.lstrip().startswith("#")]
-# docstring / 注释里引用旧实现是允许的（说明性），只要没有活的代码行
-in_docstring = "min(255, blk[1])" in vj_src
-live = [ln for ln in code_lines if "small =" in ln or "large =" in ln]
-check("旧二值化只剩说明性引用，没有活代码",
-      not live, str(live) if live else "(描述保留，代码已删)")
-# ⚠ 2026-11-17：legacy 回调整段已删除（照抄 Pro2 Bridge 的
-#   预置样本 stub = NOT_SUPPORTED）。这里改为断言它**确实不存在**。
-check("legacy 回调已被彻底删除（不再调用 _vibration_cb）",
-      "legacy_cb" not in vj_src)
+# 旧 USB/IP 输出层（vjoy_out / hid_function）已随 USB/IP 一起删除；
+# 它们原本的 rumble_cb 接线断言不再适用。震动链路现在是：
+#   HIDMaestro OutputDecoded.Fields → hidmaestro_out._on_rumble → rumble_hd
+hm_src = (ROOT / "virtual" / "hidmaestro_out.py").read_text(encoding="utf-8")
+check("hidmaestro_out 从 Fields 读震动并喂 HD",
+      "leftMotor" in hm_src and "rightMotor" in hm_src and "feed_block" in hm_src)
+check("旧 USB/IP 输出层文件已删除（不残留）",
+      not (ROOT / "virtual" / "vjoy_out.py").exists()
+      and not (ROOT / "virtual" / "hid_function.py").exists())
 
 cmd_src = (ROOT / "controller_command.py").read_text(encoding="utf-8")
 check("存在 JOY2_SET_FEATURE_MASK（0x0c subcmd 02, 掩码 0x27）",
@@ -369,8 +359,7 @@ check("main.py 在发震动之前先开功能位",
 check("功能位用 send_command（非致命），不用 send_required",
       'send_command(client, "JOY2_SET_FEATURE_MASK")' in main_src)
 
-gui_src = (ROOT / "gui.py").read_text(encoding="utf-8")
-check("GUI 开关已接 HD 通道", "rumble_hd import set_enabled" in gui_src)
+# 旧 USB/IP 的 GUI 震动开关断言已删（震动现在走 HIDMaestro OUT → rumble_hd）。
 
 duo_src = (ROOT / "control_type" / "duo_joycon.py").read_text(encoding="utf-8")
 check("duo_joycon 连接时 attach_client", "attach_client" in duo_src)
@@ -378,13 +367,6 @@ check("duo_joycon 断开时 detach_client", "detach_client" in duo_src)
 
 single_src = (ROOT / "control_type" / "single_joycon.py").read_text(encoding="utf-8")
 check("single_joycon 连接时 attach_client", "attach_client" in single_src)
-
-# 签名一致性：hid_function 调用 rumble_cb 的方式必须是 2 参数
-hid_src = (ROOT / "virtual" / "hid_function.py").read_text(encoding="utf-8")
-check("hid_function 以 2 参数调用 rumble_cb（left, right）",
-      "self.rumble_cb(bytes(data[2:6]), bytes(data[6:10]))" in hid_src)
-check("hid 层在 0x01/0x10 上取震动块",
-      "rid in (0x01, 0x10)" in hid_src)
 
 # ══════════════════════════════════════════════════════════════════════════ #
 print()

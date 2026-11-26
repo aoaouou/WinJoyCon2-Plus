@@ -242,8 +242,23 @@ class HidMaestroJoyCon2:
                     if not dst.exists() or dst.stat().st_size != src.stat().st_size:
                         shutil.copy2(str(src), str(dst))
             dst_profiles = runtime / "profiles"
-            if profiles.exists() and not dst_profiles.exists():
-                shutil.copytree(str(profiles), str(dst_profiles))
+            dst_profiles.mkdir(parents=True, exist_ok=True)
+            if profiles.exists():
+                # ★ 每次按内容同步：缺口/变化就覆盖，并删除目标里已废弃的
+                #   profile（如旧的 joycon-l-usb / switch2-*）。否则旧缓存
+                #   目录会一直存在，桥接找不到新的 joycon-l/r → INIT 失败。
+                import filecmp
+                src_names = set()
+                for src in profiles.iterdir():
+                    if not src.is_file():
+                        continue
+                    src_names.add(src.name)
+                    dst = dst_profiles / src.name
+                    if not dst.exists() or not filecmp.cmp(str(src), str(dst), shallow=False):
+                        shutil.copy2(str(src), str(dst))
+                for stale in dst_profiles.iterdir():
+                    if stale.is_file() and stale.name not in src_names:
+                        stale.unlink()
             return str(runtime / _BRIDGE_EXE), str(dst_profiles)
 
         return str(exe), str(profiles)

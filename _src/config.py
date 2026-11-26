@@ -124,3 +124,72 @@ class Config:
             "slr_mapping": self.slr_mapping,
             "srr_mapping": self.srr_mapping,
         }
+
+
+# ── 左右记忆 / 首次须知（原 usbip_setup.py，USB/IP 删除后迁来）──────────
+def get_known_sides() -> dict:
+    """读取 config.ini [KnownSides] → {'left': mac, 'right': mac}。"""
+    out = {}
+    try:
+        cp = configparser.ConfigParser()
+        p = _cfg_path()
+        if os.path.exists(p):
+            cp.read(p, encoding="utf-8")
+            if "KnownSides" in cp:
+                for side in ("left", "right"):
+                    out[side] = cp["KnownSides"].get(side, "").strip()
+    except Exception:
+        pass
+    return out
+
+
+def sides_calibrated() -> bool:
+    """左右都已记忆 → 允许一键连接。"""
+    ks = get_known_sides()
+    return bool(ks.get("left")) and bool(ks.get("right"))
+
+
+def reset_known_sides() -> tuple:
+    """清空左右记忆与首次须知标志（纠正用）。返回 (成功, 说明)。"""
+    try:
+        cp = configparser.ConfigParser()
+        p = _cfg_path()
+        if not os.path.exists(p):
+            return False, f"配置文件不存在：{p}"
+        cp.read(p, encoding="utf-8")
+        removed = "KnownSides" in cp
+        if removed:
+            cp.remove_section("KnownSides")
+        if "General" not in cp:
+            cp["General"] = {}
+        cp["General"]["first_run_done"] = "0"
+        with open(p, "w", encoding="utf-8") as f:
+            cp.write(f)
+        return True, f"已清空左右记忆（{'有记录被移除' if removed else '原本就没有记录'}）\n{p}"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"{type(exc).__name__}: {exc}"
+
+
+def first_run_done() -> bool:
+    try:
+        cp = configparser.ConfigParser()
+        p = _cfg_path()
+        if os.path.exists(p):
+            cp.read(p, encoding="utf-8")
+            if "General" in cp:
+                return cp["General"].get("first_run_done", "0").strip() == "1"
+    except Exception:
+        pass
+    return False
+
+
+def mark_first_run_done():
+    cp = configparser.ConfigParser()
+    p = _cfg_path()
+    if os.path.exists(p):
+        cp.read(p, encoding="utf-8")
+    if "General" not in cp:
+        cp["General"] = {}
+    cp["General"]["first_run_done"] = "1"
+    with open(p, "w", encoding="utf-8") as f:
+        cp.write(f)
