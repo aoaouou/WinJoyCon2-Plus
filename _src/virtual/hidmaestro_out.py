@@ -385,12 +385,12 @@ class HidMaestroJoyCon2:
                 self._stick_r = v
 
     def set_imu_raw(self, side: str, raw6: tuple) -> None:
-        from virtual.imu_proc import imu
-        # ★ 照抄旧 USB/IP 方案验证过的 imu()：它输出的就是真机 JC1 的
-        #   wire raw 值（量纲 GYRO_SCALE + 轴向都已验证）。桥接会把 raw
-        #   反算成语义 g/dps 再交给 profile（profile scale 回去正好得到
-        #   同样的 wire）——这样与旧方案逐字节一致，避免方向/初始状态错。
-        sample = imu(side, raw6)
+        from virtual.imu_proc import imu_semantic
+        # ★ 给 HIDMaestro 的是**物理轴语义值**（g / dps），不做轴向重排：
+        #   profile 的 stateBlock 字段名（accelGZ 落在报告 accel_x 位置等）
+        #   本身就是 SDL 的轴重排映射，由 profile + SDL 完成重排。
+        #   之前传 imu()（已重排的报告顺序值）→ 重排两次 → 静止平放被判成立着。
+        sample = imu_semantic(side, raw6)
         with self._lock:
             if side == "left":
                 self._imu_l = tuple(float(v) for v in sample)

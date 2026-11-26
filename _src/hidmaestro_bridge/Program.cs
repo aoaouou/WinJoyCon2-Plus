@@ -427,18 +427,15 @@ internal static class Program
             lock (dev.Lock)
             {
                 var st = dev.State;
-                // Python 侧 imu_proc.imu() 输出真机 JC1 的 wire raw（已验证
-                // 的量纲与轴向）。HIDMaestro profile 字段是语义 g/dps，写出时
-                // 会再乘 scale（accel×4096、gyro×13371/936）。故先反算成
-                // 语义值，profile scale 回去正好等于旧方案的 wire raw。
-                const float aScale = 4096f;
-                const float gScale = 13371f / 936f;
-                _stateType.GetField("AccelGX")?.SetValue(st, ax / aScale);
-                _stateType.GetField("AccelGY")?.SetValue(st, ay / aScale);
-                _stateType.GetField("AccelGZ")?.SetValue(st, az / aScale);
-                _stateType.GetField("GyroDpsX")?.SetValue(st, gx / gScale);
-                _stateType.GetField("GyroDpsY")?.SetValue(st, gy / gScale);
-                _stateType.GetField("GyroDpsZ")?.SetValue(st, gz / gScale);
+                // 原生直写：Python 给的就是物理轴语义值（g / dps）。
+                // profile 的 scale 与 negate 负责换算成真机 wire —— SDK 的
+                // 职责，这里不重复做任何变换（重复会二次翻轴，姿态会立起来）。
+                _stateType.GetField("AccelGX")?.SetValue(st, ax);
+                _stateType.GetField("AccelGY")?.SetValue(st, ay);
+                _stateType.GetField("AccelGZ")?.SetValue(st, az);
+                _stateType.GetField("GyroDpsX")?.SetValue(st, gx);
+                _stateType.GetField("GyroDpsY")?.SetValue(st, gy);
+                _stateType.GetField("GyroDpsZ")?.SetValue(st, gz);
                 dev.Submit.Invoke(dev.Ctrl, new object[] { st });
             }
         }
