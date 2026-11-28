@@ -1,6 +1,6 @@
 <div align="center">
 
-# WinJoyCon2-Plus v2.1
+# WinJoyCon2-Plus v2.2
 
 ### 把 Switch 2 的 Joy-Con 2，变成 PC 上无所不能的操控神器
 
@@ -8,7 +8,7 @@
 
 **WinJoyCon2-Plus，堂堂登场！**
 
-[![Version](https://img.shields.io/badge/Version-2.1-brightgreen?style=for-the-badge)](./README.md)
+[![Version](https://img.shields.io/badge/Version-2.2-brightgreen?style=for-the-badge)](./README.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
 [![Controller](https://img.shields.io/badge/Controller-Joy--Con%202-E6007D?style=for-the-badge)](https://www.nintendo.com/us/store/products/joy-con-2/)
 [![Protocol](https://img.shields.io/badge/Backend-HIDMaestro-6f42c1?style=for-the-badge)](https://github.com/BrikWork/HIDMaestro)
@@ -41,6 +41,17 @@
 - NS2 陀螺仪只在个别游戏里当辅助 —— 我们做成了**银河式陀螺仪鼠标**，全系统通用，漂移了一键回中。
 
 **这是把游戏主机的硬件，做成了 PC 上真正通用的输入设备。走的就是这条路。**
+
+## v2.2，堂堂更新！
+
+*v2.2, grandly updated!*
+
+- **管理员权限，堂堂就位！** exe 内嵌 `requireAdministrator`，双击自动提权 —— 修好了"普通双击连上却完全无法使用"（HIDMaestro 建设备必需管理员 token）；同时加入 DPI 感知声明，任务栏/托盘图标不再显示成纯色方块。
+- **DPI 数值，堂堂自定义！** 光学鼠标与陀螺仪鼠标各有独立四挡 DPI，每挡既可拖滑块也可直接输数字（1~3200），即时生效并保存；每页配「恢复默认 DPI」按钮，一键把四挡和当前挡位复位到默认第 2 挡。
+- **连接失败，堂堂根治！** 修 GATT 特征未就绪导致的间歇性连接失败（特征级重试），可选命令不再拖垮连接，连接提速到 2~3 秒。
+- **致命 bug，堂堂清除！** 修 GL/GR 两键改造时 `feed_combo` 漏传 `gr` 导致手柄连上全废的问题；并加入调用点完整性静态检查，防止再犯。
+- **使用说明，堂堂清晰！** 鼠标/陀螺仪/宏三个说明弹窗字号放大（13px→15pt）、窗口加大，高 DPI 屏看得清。
+- **旧代码，堂堂清除！** 两个项目目录合并为单一 `Joycon2`，删除全部过时 USB/IP 与 viiper 遗留（体积 142MB→54MB）。
 
 ## v2.1，堂堂更新！
 
@@ -204,6 +215,17 @@ The result is a control system that **surpasses the NS2 console itself and Windo
 - NS2 limits gyro to a few games. We built a **Galaxy-style gyro mouse** — system-wide, with one-click re-centering when it drifts.
 
 **This turns console hardware into a truly universal PC input device. This path, grandly chosen!**
+
+### v2.2, grandly updated!
+
+*v2.2, grandly updated!*
+
+- **Admin rights, grandly in place!** The exe embeds `requireAdministrator` — double-click auto-elevates, fixing "connects but completely unusable" (HIDMaestro needs an admin token to create devices). DPI-awareness declarations stop the taskbar/tray icon from showing as a solid square.
+- **DPI values, grandly customizable!** Optical mouse and gyro mouse each have their own four DPI levels, each adjustable by slider or direct number input (1–3200), applied instantly and saved. A "restore default DPI" button resets all four levels and the current level back to default level 2.
+- **Connection failures, grandly fixed!** GATT characteristic-not-ready retries eliminate intermittent connection failures; optional commands no longer break a connection; connection sped up to 2–3 s.
+- **Fatal bug, grandly removed!** Fixed the `feed_combo` missing-`gr` bug from the GL/GR two-key change that made controllers unusable; added a call-site integrity check to prevent recurrence.
+- **Help dialogs, grandly legible!** Mouse/gyro/macro help dialogs now use larger text (13px→15pt) and a bigger window, readable on high-DPI screens.
+- **Old code, grandly cleared!** The two project folders merged into a single `Joycon2`, removing all obsolete USB/IP and viiper leftovers (142MB→54MB).
 
 ### v2.1, grandly updated!
 
