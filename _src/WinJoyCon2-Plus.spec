@@ -65,5 +65,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    manifest='app.manifest',   # DPI 感知声明
+    uac_admin=True,            # ★ 默认以管理员权限启动（HIDMaestro CreateController 必需）
     icon=['logo_256.ico'],
 )
