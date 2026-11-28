@@ -132,6 +132,28 @@ check("挡位标签", "DPI" in mm.get_dpi_label(1))
 
 print()
 print("=" * 78)
+print("E2. 自定义 DPI 数值（两种模式独立 / clamp / scale）")
+print("=" * 78)
+# 默认挡位值
+check("光学默认2挡=800", mm.get_dpi_value(1, 1, mm.MODE_MOUSE) == 800)
+check("陀螺默认2挡=800", mm.get_dpi_value(1, 1, mm.MODE_GYRO) == 800)
+# 设置光学 2 挡为 1200，陀螺仪不受影响
+mm.set_dpi_value(1, 1, 1200, mm.MODE_MOUSE, persist=False)
+check("光学2挡改1200", mm.get_dpi_value(1, 1, mm.MODE_MOUSE) == 1200)
+check("两模式独立(陀螺仍800)", mm.get_dpi_value(1, 1, mm.MODE_GYRO) == 800)
+# scale 按自定义值算：1200/800=1.5x
+mm.get_config(1)["mouse_dpi_index"] = 1
+check("光学scale=1.5x", abs(mm.get_dpi_scale(1, mm.MODE_MOUSE) - 1.5) < 1e-6)
+check("陀螺scale=1.0x", abs(mm.get_dpi_scale(1, mm.MODE_GYRO) - 1.0) < 1e-6)
+# clamp：上限 3200，下限 1
+check("clamp上限", mm.set_dpi_value(1, 0, 99999, mm.MODE_MOUSE, persist=False) == 3200)
+check("clamp下限", mm.set_dpi_value(1, 0, -5, mm.MODE_MOUSE, persist=False) == 1)
+# 恢复默认，避免影响后续测试
+mm.set_dpi_value(1, 0, 400, mm.MODE_MOUSE, persist=False)
+mm.set_dpi_value(1, 1, 800, mm.MODE_MOUSE, persist=False)
+
+print()
+print("=" * 78)
 print("F. 滚轮：方向 / 力度曲线 / 亚格平滑")
 print("=" * 78)
 C = 2048

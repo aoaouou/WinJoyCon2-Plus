@@ -19,7 +19,8 @@ from PyQt5.QtWidgets import (
     QLabel, QPushButton, QTextEdit, QGroupBox, QCheckBox,
     QProgressBar, QFrame, QSplitter, QMessageBox, QSystemTrayIcon, QMenu,
     QComboBox, QFormLayout, QDialog, QGridLayout, QListWidget, QListWidgetItem,
-    QScrollArea, QTabWidget, QDoubleSpinBox, QLineEdit, QStackedWidget, QSizePolicy
+    QScrollArea, QTabWidget, QDoubleSpinBox, QSpinBox, QSlider,
+    QLineEdit, QStackedWidget, QSizePolicy
 )
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QMetaObject, QPoint, Q_ARG, QEvent, QObject
 from PyQt5.QtGui import (QFont, QIcon, QPixmap, QPainter, QColor, QBrush,
@@ -109,7 +110,7 @@ class InputSettingsWidget(QWidget):
                 (tr("右手柄 SL"), ["SLR"]), (tr("右手柄 SR"), ["SRR"])]
 
     HELP = {
-        "mouse": "【鼠标模式说明】\n\n切换：按住右手柄 C 键，再按 R → 右手柄进鼠标模式；按 L → 左手柄进鼠标模式。\n退出：再次按同一组合键（如 C+R）→ 回手柄模式；或长按 C 键 2 秒全部复位。\n\n操作：\n  • 平放手柄滑动 = 移动光标（光学传感器）\n  • 摇杆前/后 = 滚动（推得越狠越快）\n  • 按键功能在「自定义按键」页设置（默认 L/R=左键、ZL/ZR=右键、截图/HOME=中键、十字键或XYAB=前进后退）\n  • 灵敏度四挡 800/1600/3200/6400，默认第2挡\n\n固定功能键（不可自定义、不可录宏）：\n  • 加键 + / 减键 −：永远只调灵敏度挡位\n  • C 键：永远只做模式切换/宏触发\n",
+        "mouse": "【鼠标模式说明】\n\n切换：按住右手柄 C 键，再按 R → 右手柄进鼠标模式；按 L → 左手柄进鼠标模式。\n退出：再次按同一组合键（如 C+R）→ 回手柄模式；或长按 C 键 2 秒全部复位。\n\n操作：\n  • 平放手柄滑动 = 移动光标（光学传感器）\n  • 摇杆前/后 = 滚动（推得越狠越快）\n  • 按键功能在「自定义按键」页设置（默认 L/R=左键、ZL/ZR=右键、截图/HOME=中键、十字键或XYAB=前进后退）\n  • 灵敏度四挡 400/800/1600/3200（可在鼠标页自定义每挡 DPI），默认第2挡\n\n固定功能键（不可自定义、不可录宏）：\n  • 加键 + / 减键 −：永远只调灵敏度挡位\n  • C 键：永远只做模式切换/宏触发\n",
         "gyro": "【陀螺仪鼠标说明 · 超级马力欧银河 NS 版逻辑】\n\n切换：按住 C 键，再按 ZL → 左手柄陀螺仪；按 ZR → 右手柄陀螺仪。\n退出：再次按同一组合键（如 C+ZR）→ 回手柄模式；或长按 C 键 2 秒全部复位。\n\n操作逻辑（银河式）：\n  • 手柄侧放，绕竖直轴左右转动 = 光标水平移动\n  • 绕长轴前后俯仰 = 光标垂直移动\n  • 转动越快光标移动越快，停手即停（角速度积分，非倾斜绝对角度）\n\n因握持姿势与光学鼠标不同，按键功能请在「自定义按键」页单独设置；灵敏度用下方「陀螺仪灵敏度」调节（默认值已按银河手感标定）。",
         "macro": "【宏系统说明】\n\n开启：勾选下方「启用宏系统」（默认关闭）。\n\n录制：\n  1. 选好宏名称与绑定键（左手柄 SL/SR、右手柄 SL/SR、充电握把背键 GL/GR 六选一）\n  2. 点「开始录制」，依次按下想录的动作键\n  3. 点「停止保存」，宏即绑定到该 SL/SR 键\n\n充电握把背键 GL/GR 也可绑定/录制宏，需连接充电握把。\n\n触发：按住 C 键 + 对应 SL/SR 键 → 回放该宏。\n\n所有自定义按键与宏都会自动保存到配置，重启后保留。四个 SL/SR 键 + 充电握把 GL/GR 各绑一个宏。",
     }
@@ -175,6 +176,46 @@ class InputSettingsWidget(QWidget):
                 return
             p = p.parent()
 
+    # ── DPI 挡位自定义（滑块 + 数字框，双向同步）─────────────────────────
+    def _dpi_group(self, mode: str, title: str):
+        """两种鼠标模式各自的四挡 DPI：既可拖滑块也可直接输入数值。
+
+        上限 = 当前最高挡默认 DPI(3200)，下限 > 0(1)。修改即时生效并落盘。
+        """
+        from control_type import mouse_mode as mm
+        grp = QGroupBox(tr(title))
+        form = QFormLayout()
+        for level in range(4):
+            row = QHBoxLayout()
+            slider = QSlider(Qt.Horizontal)
+            slider.setRange(mm.DPI_LOWER, mm.DPI_UPPER)
+            slider.setSingleStep(50)
+            slider.setPageStep(200)
+            spin = QSpinBox()
+            spin.setRange(mm.DPI_LOWER, mm.DPI_UPPER)
+            spin.setSingleStep(50)
+            spin.setSuffix(" DPI")
+            val = mm.get_dpi_value(self.pair_id, level, mode)
+            slider.setValue(val)
+            spin.setValue(val)
+
+            def on_slider(v, lv=level, sp=spin, md=mode):
+                if sp.value() != v:
+                    sp.setValue(v)
+                mm.set_dpi_value(self.pair_id, lv, v, md, persist=True)
+            def on_spin(v, lv=level, sl=slider, md=mode):
+                if sl.value() != v:
+                    sl.setValue(v)
+                mm.set_dpi_value(self.pair_id, lv, v, md, persist=True)
+
+            slider.valueChanged.connect(on_slider)
+            spin.valueChanged.connect(on_spin)
+            row.addWidget(slider)
+            row.addWidget(spin)
+            form.addRow(tr("{n} 挡").format(n=level + 1), row)
+        grp.setLayout(form)
+        return grp
+
     # ── 鼠标页 ───────────────────────────────────────────────────────────
     def _mouse_page(self):
         w = QWidget()
@@ -198,7 +239,8 @@ class InputSettingsWidget(QWidget):
             of.addRow("", cb)
         og.setLayout(of)
         lay.addWidget(og)
-        lay.addWidget(QLabel(tr("灵敏度挡位：{s}（加减键切换，可在自定义按键页改键）", s=self.mm.get_dpi_label(self.pair_id))))
+        lay.addWidget(QLabel(tr("灵敏度挡位：{s}（加减键切换，可在自定义按键页改键）", s=self.mm.get_dpi_label(self.pair_id, self.mm.MODE_MOUSE))))
+        lay.addWidget(self._dpi_group(self.mm.MODE_MOUSE, "光学鼠标 DPI 挡位（每挡可自定义）"))
         lay.addWidget(self._keymap_group(self.mm.MODE_MOUSE, "鼠标模式按键映射"))
         lay.addStretch()
         return w
@@ -225,6 +267,7 @@ class InputSettingsWidget(QWidget):
             of.addRow("", cb)
         og.setLayout(of)
         lay.addWidget(og)
+        lay.addWidget(self._dpi_group(self.mm.MODE_GYRO, "陀螺仪鼠标 DPI 挡位（每挡可自定义）"))
         lay.addWidget(self._keymap_group(self.mm.MODE_GYRO, "陀螺仪鼠标模式按键映射"))
         lay.addStretch()
         return w

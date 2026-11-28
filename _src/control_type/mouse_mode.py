@@ -74,17 +74,24 @@ def default_keymap() -> dict:
 
 
 # ── 灵敏度挡位 ───────────────────────────────────────────────────────────────
-# 历史：原 1 挡(400/0.5x) → 2026-11-20 嫌低整体前移 → 2026-11-26 用户反馈
-# 「每个挡位都太高」，故整体降一档回到 400 起，默认仍是第 2 挡（索引1）。
-# 现在：1挡 400/0.5x、2挡 800/1.0x、3挡 1600/2.0x、4挡 3200/4.0x。
+# 默认四挡 DPI（可自定义，上限=3200、下限>0）。scale = dpi / 800（800=1.0x）。
+# 光学鼠标与陀螺仪鼠标各有独立的一套挡位值（mouse_dpi_* / gyro_dpi_*）。
 DPI_LEVELS = ((400, 0.5), (800, 1.0), (1600, 2.0), (3200, 4.0))
 DPI_DEFAULT_INDEX = 1
+DPI_UPPER = 3200          # 数值上限 = 当前最高挡默认 DPI
+DPI_LOWER = 1              # 下限 > 0
+DPI_BASE = 800             # 1.0x 基准
 
 # ── 每组 pair 默认配置 ───────────────────────────────────────────────────────
 _DEFAULTS = {
     "mode_left": MODE_GAMEPAD,
     "mode_right": MODE_GAMEPAD,
     "mouse_dpi_index": DPI_DEFAULT_INDEX,
+    # 光学鼠标 / 陀螺仪鼠标 各自四挡 DPI（可自定义）
+    "mouse_dpi_0": 400, "mouse_dpi_1": 800,
+    "mouse_dpi_2": 1600, "mouse_dpi_3": 3200,
+    "gyro_dpi_0": 400, "gyro_dpi_1": 800,
+    "gyro_dpi_2": 1600, "gyro_dpi_3": 3200,
     "mouse_scroll": True,
     "mouse_scroll_rev": False,
     # 陀螺仪灵敏度倍率（相对鼠标的 scale）
@@ -97,7 +104,9 @@ _DEFAULTS = {
 
 _BOOL_KEYS = ("mouse_scroll", "mouse_scroll_rev",
               "gyro_invert_x", "gyro_invert_y", "macro_enabled")
-_INT_KEYS = ("mouse_dpi_index",)
+_INT_KEYS = ("mouse_dpi_index",
+             "mouse_dpi_0", "mouse_dpi_1", "mouse_dpi_2", "mouse_dpi_3",
+             "gyro_dpi_0", "gyro_dpi_1", "gyro_dpi_2", "gyro_dpi_3")
 _FLOAT_KEYS = ("gyro_scale",)
 _STR_KEYS = ("mode_left", "mode_right")
 
@@ -156,7 +165,12 @@ def get_config(pair_id: int) -> dict:
                         if k in sec:
                             try:
                                 v = int(sec.get(k))
-                                cfg[k] = min(len(DPI_LEVELS) - 1, max(0, v))
+                                if k == "mouse_dpi_index":
+                                    cfg[k] = min(len(DPI_LEVELS) - 1, max(0, v))
+                                elif k.endswith(("_dpi_0", "_dpi_1", "_dpi_2", "_dpi_3")):
+                                    cfg[k] = min(DPI_UPPER, max(DPI_LOWER, v))
+                                else:
+                                    cfg[k] = v
                             except (ValueError, TypeError):
                                 pass
                     for k in _FLOAT_KEYS:
@@ -453,14 +467,34 @@ def get_dpi_index(pair_id: int) -> int:
     return int(get_config(pair_id)["mouse_dpi_index"])
 
 
-def get_dpi_scale(pair_id: int) -> float:
-    return DPI_LEVELS[get_dpi_index(pair_id)][1]
+def get_dpi_value(pair_id: int, level: int, mode: str = MODE_MOUSE) -> int:
+    """取某模式的某挡 DPI 值（可自定义）。level 0..3。"""
+    prefix = "gyro" if mode == MODE_GYRO else "mouse"
+    cfg = get_config(pair_id)
+    return int(cfg.get(f"{prefix}_dpi_{level}", DPI_LEVELS[level][0]))
 
 
-def get_dpi_label(pair_id: int) -> str:
+def set_dpi_value(pair_id: int, level: int, value: int, mode: str = MODE_MOUSE,
+                  persist: bool = True) -> int:
+    """设某模式某挡 DPI（clamp 到 1..3200）。返回实际写入值。"""
+    value = max(DPI_LOWER, min(DPI_UPPER, int(value)))
+    prefix = "gyro" if mode == MODE_GYRO else "mouse"
+    get_config(pair_id)[f"{prefix}_dpi_{level}"] = value
+    if persist:
+        save_config(pair_id)
+    return value
+
+
+def get_dpi_scale(pair_id: int, mode: str = MODE_MOUSE) -> float:
+    """当前挡位的 scale。光学/陀螺仪各用自己的挡位 DPI。"""
     idx = get_dpi_index(pair_id)
-    dpi, scale = DPI_LEVELS[idx]
-    return f"{idx + 1} 挡 · {dpi} DPI · {scale:g}x"
+    return get_dpi_value(pair_id, idx, mode) / DPI_BASE
+
+
+def get_dpi_label(pair_id: int, mode: str = MODE_MOUSE) -> str:
+    idx = get_dpi_index(pair_id)
+    dpi = get_dpi_value(pair_id, idx, mode)
+    return f"{idx + 1} 挡 · {dpi} DPI · {dpi / DPI_BASE:g}x"
 
 
 def feed_dpi_keys(pair_id: int, plus_pressed: bool, minus_pressed: bool,
@@ -572,7 +606,7 @@ def gyro_cursor_delta(side: str, imu_raw, pair_id: int) -> tuple[float, float]:
         return 0.0, 0.0
     gx, gy, gz = imu_raw[3], imu_raw[4], imu_raw[5]
     cfg = get_config(pair_id)
-    scale = get_dpi_scale(pair_id) * float(cfg["gyro_scale"])
+    scale = get_dpi_scale(pair_id, MODE_GYRO) * float(cfg["gyro_scale"])
 
     yaw_dps = gz * GYRO_LSB_TO_DPS     # 绕垂直轴 → 水平
     pitch_dps = gx * GYRO_LSB_TO_DPS   # 绕长轴 → 垂直

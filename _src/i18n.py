@@ -143,6 +143,9 @@ T = {
         "Reset will clear remembered controller sides. Continue?",
     "⚙ 输入模式设置": "⚙ Input Settings",
     "输入模式设置": "Input Mode Settings",
+    "{n} 挡": "Level {n}",
+    "光学鼠标 DPI 挡位（每挡可自定义）": "Optical mouse DPI levels (customizable)",
+    "陀螺仪鼠标 DPI 挡位（每挡可自定义）": "Gyro mouse DPI levels (customizable)",
     "已连接{s1}手柄。请唤醒{s2}手柄并长按 SYNC，然后选侧连接。":
         "{s1} controller connected. Wake the {s2} controller, hold SYNC, then connect.",
     "{n}/4 组手柄": "{n}/4 Pairs",
