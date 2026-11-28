@@ -615,6 +615,7 @@ async def update(pair_id: int = 0):
             sll=bool(lb.get("SLL")), srl=bool(lb.get("SRL")),
             slr=bool(rb.get("SLR")), srr=bool(rb.get("SRR")),
             gl=bool(lb.get("GL")) or bool(rb.get("GL")),
+            gr=bool(lb.get("GR")) or bool(rb.get("GR")),
         )
         if combo_action:
             mm.mark_consumed(pair_id, combo_action)   # 本帧该修饰键不触发鼠标动作

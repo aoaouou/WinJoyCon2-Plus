@@ -185,6 +185,28 @@ check("宏可开启", mm.is_macro_enabled(1) is True)
 
 print()
 print("=" * 78)
+print("I. feed_combo 调用点参数完整性（★ 防签名漂移导致手柄全废）")
+print("=" * 78)
+# 教训：曾把 feed_combo 签名改成 (…, gl, gr)，但 duo_joycon 调用处漏传 gr，
+# 结果每帧通知处理抛 TypeError、手柄完全失效，而纯函数单测却全绿。
+# 这里用 AST 扫描所有调用点，确保关键字参数与签名一致。
+import ast
+_required_kwargs = {"c", "l", "zl", "r", "zr", "sll", "srl", "slr", "srr", "gl", "gr"}
+for rel in ("control_type/duo_joycon.py", "control_type/single_joycon.py"):
+    src = (ROOT / rel).read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    calls = [n for n in ast.walk(tree)
+             if isinstance(n, ast.Call)
+             and isinstance(n.func, ast.Attribute)
+             and n.func.attr == "feed_combo"]
+    check(f"{rel}: 找到 feed_combo 调用", len(calls) >= 1)
+    for call in calls:
+        kws = {k.arg for k in call.keywords}
+        missing = _required_kwargs - kws
+        check(f"{rel}: 调用参数齐全", not missing, f"缺 {sorted(missing)}")
+
+print()
+print("=" * 78)
 print(f"结果: {len(PASS)} PASS / {len(FAIL)} FAIL")
 print("=" * 78)
 if FAIL:

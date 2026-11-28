@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """验证 hidmaestro_out 后端：建设备 → 推状态 → SDL 应读到数据。"""
 import sys, time, subprocess
+from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-sys.path.insert(0, r"D:\Games\Nintendo\tool\Joycon2-hidmaestro\_src")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from virtual.hidmaestro_out import HidMaestroJoyCon2
 from virtual.reports import Ns2Bit
@@ -11,7 +12,6 @@ from virtual.reports import Ns2Bit
 for n in ("HmBridge.exe",):
     subprocess.run(["taskkill", "/F", "/IM", n], capture_output=True, creationflags=0x08000000)
 time.sleep(2)
-sys.path.insert(0, r"D:\Games\Nintendo\tool\Joycon2-hidmaestro\_src")
 import device_cleanup
 device_cleanup.remove_ghosts_elevated()
 

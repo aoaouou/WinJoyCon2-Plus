@@ -134,10 +134,10 @@
 
 ## 从源码构建
 
-源码在 `D:\Games\Nintendo\tool\Joycon2-hidmaestro`，桥接（C#）与 Python 打包分两步：
+源码在 `D:\Games\Nintendo\tool\Joycon2`，桥接（C#）与 Python 打包分两步：
 
 ```powershell
-cd D:\Games\Nintendo\tool\Joycon2-hidmaestro\_src
+cd D:\Games\Nintendo\tool\Joycon2\_src
 
 # ① 桥接（改过 hidmaestro_bridge 下的 .cs 时）
 dotnet build -c Release -o .\hidmaestro_bridge\buildout .\hidmaestro_bridge
@@ -297,10 +297,10 @@ This release rebuilds the output layer on HIDMaestro, tears down the old USB/IP 
 
 ### Build from source
 
-Source: `D:\Games\Nintendo\tool\Joycon2-hidmaestro`. The bridge (C#) and the Python package are two steps:
+Source: `D:\Games\Nintendo\tool\Joycon2`. The bridge (C#) and the Python package are two steps:
 
 ```powershell
-cd D:\Games\Nintendo\tool\Joycon2-hidmaestro\_src
+cd D:\Games\Nintendo\tool\Joycon2\_src
 
 # ① Bridge (only when .cs under hidmaestro_bridge changed)
 dotnet build -c Release -o .\hidmaestro_bridge\buildout .\hidmaestro_bridge
