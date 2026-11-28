@@ -91,6 +91,36 @@ def handle_power_report(mac: str, data, side: str = "Joy-Con 2"):
     info(f"Joy-Con 2 {side} battery level: {battery_units}/9 ({battery_level}%)")
 
 
+async def _start_notify_resilient(client, uuid: str, handler, mac: str,
+                                  attempts: int = 4) -> bool:
+    """订阅 BLE 特征，容忍 Windows BLE 栈「连上了但服务还没枚举完」。
+
+    连接失败日志里最常见的是 BleakCharacteristicNotFoundError：connect()
+    返回 is_connected=True 后，GATT 特征有时还没被发现，此时立刻
+    start_notify 会抛错，整只手柄被判连接失败（几秒后重连又成功）。
+    这里在特征未就绪时短暂等待再试，成功后立刻返回 —— 既不拖慢正常路径，
+    又能消掉这种间歇性失败。
+    """
+    last = None
+    for i in range(1, attempts + 1):
+        try:
+            await client.start_notify(uuid, handler)
+            if i > 1:
+                debug(f"{mac} start_notify({uuid[:8]}) 第 {i} 次尝试成功")
+            return True
+        except Exception as exc:
+            last = exc
+            # 只有"特征/服务未找到"类错误才值得等着重试；其它错误立即放弃
+            name = type(exc).__name__
+            if "Characteristic" not in name and "Service" not in name and "NotFound" not in name:
+                debug(f"{mac} start_notify({uuid[:8]}) 失败（不重试）: {name}: {exc}")
+                return False
+            if i < attempts:
+                await asyncio.sleep(0.15 * i)   # 0.15/0.3/0.45s，越等越久
+    debug(f"{mac} start_notify({uuid[:8]}) {attempts} 次后仍失败: {type(last).__name__}: {last}")
+    return False
+
+
 async def capture_power_level(client, side: str, mac: str, timeout: float = 1.5):
     """Capture one native 0-9 battery report before selecting report 0x05.
 
@@ -232,8 +262,8 @@ async def connect_joycon(device, side: str, mac: str, pair_id: Optional[int] = N
     target = device if device is not None else mac
     client = BleakClient(
         target,
-        timeout=5.0,        # 2026-11-21：8→5s。JC2 配对窗口只有 10s，握手要快，
-                            # 失败也要快，才能在这 10s 内完成重试
+        timeout=3.0,        # 失败也要快：JC2 配对窗口约 10s，3 次重试要能塞进去。
+                            # 成功连接通常 <1s，timeout 只影响失败路径。
         disconnected_callback=disconnected_callback,
     )
     try:
@@ -244,7 +274,7 @@ async def connect_joycon(device, side: str, mac: str, pair_id: Optional[int] = N
         # 尤其在一键连接两只手柄并发时。原实现一次失败就放弃，
         # 表现就是"只连上一个，另一个连不上，必须重启程序"。
         #
-        # 退避重试：0.4s → 0.9s → 1.8s（给协议栈释放上一个句柄的时间）
+        # 退避重试：0.25s → 0.5s（给协议栈释放上一个句柄的时间，同时压总耗时）
         info(f"Attempting to connect to {mac} ({dev_name})...")
         last_exc = None
         for attempt in range(1, 4):
@@ -256,7 +286,7 @@ async def connect_joycon(device, side: str, mac: str, pair_id: Optional[int] = N
             except Exception as exc:
                 last_exc = exc
             if attempt < 3:
-                delay = 0.4 * (2 ** (attempt - 1))
+                delay = 0.25 * (2 ** (attempt - 1))
                 debug(f"{mac} 第 {attempt} 次连接失败（{last_exc}），"
                       f"{delay:.1f}s 后重试")
                 # 失败后必须关掉旧 client，否则句柄不释放，下次必失败
@@ -345,8 +375,10 @@ async def handle_duo_joycons(client, side: str, pair_id: int, mac: str):
     
     response_notify_started = False
     try:
-        await client.start_notify(UUID_CMD_RESPONSE, response_handler)
-        response_notify_started = True
+        response_notify_started = await _start_notify_resilient(
+            client, UUID_CMD_RESPONSE, response_handler, mac)
+        if not response_notify_started:
+            raise RuntimeError("command response notify unavailable")
         await capture_power_level(client, side, mac)
         await initSendControllerCmd(client, "Joy-Con", pair_id)
         
@@ -357,7 +389,8 @@ async def handle_duo_joycons(client, side: str, pair_id: int, mac: str):
             except Exception as e:
                 debug(f"Failed to stop command notifications for {mac}: {e}")
     
-    await client.start_notify(UUID_NOTIFY, notification_handler)
+    if not await _start_notify_resilient(client, UUID_NOTIFY, notification_handler, mac):
+        raise RuntimeError("main notify unavailable")
 
 
 async def handle_single_joycon(client, side: str, pair_id: int, mac: str):
@@ -387,8 +420,10 @@ async def handle_single_joycon(client, side: str, pair_id: int, mac: str):
     
     response_notify_started = False
     try:
-        await client.start_notify(UUID_CMD_RESPONSE, response_handler)
-        response_notify_started = True
+        response_notify_started = await _start_notify_resilient(
+            client, UUID_CMD_RESPONSE, response_handler, mac)
+        if not response_notify_started:
+            raise RuntimeError("command response notify unavailable")
         await capture_power_level(client, side, mac)
         await initSendControllerCmd(client, "Joy-Con", pair_id)
     finally:
@@ -398,7 +433,8 @@ async def handle_single_joycon(client, side: str, pair_id: int, mac: str):
             except Exception as e:
                 debug(f"Failed to stop command notifications for {mac}: {e}")
     
-    await client.start_notify(UUID_NOTIFY, notification_handler)
+    if not await _start_notify_resilient(client, UUID_NOTIFY, notification_handler, mac):
+        raise RuntimeError("main notify unavailable")
 
 
 async def initSendControllerCmd(client, controllerName: str, pair_id: int):
@@ -409,18 +445,30 @@ async def initSendControllerCmd(client, controllerName: str, pair_id: int):
     async def send_required(command_type, args=None):
         if not await controllerCommand.send_command(client, command_type, args):
             raise RuntimeError(f"Controller command failed: {command_type}")
-    
+
+    async def send_optional(command_type, args=None):
+        """锦上添花的命令：失败只记录，不让整只手柄连不上。
+
+        这些命令 wait_response=True，每条失败最多等 6s；旧实现用 required，
+        任一超时就抛异常→连接失败。改成可选后既不拖慢连接，也不会误判失败。
+        """
+        try:
+            ok = await controllerCommand.send_command(client, command_type, args)
+            if not ok:
+                debug(f"optional command {command_type} 无应答（忽略）")
+        except Exception as exc:
+            debug(f"optional command {command_type} 失败（忽略）: {type(exc).__name__}: {exc}")
+
     if current_config.get('save_mac_address', False):
         mac_address = current_config.get('mac_address', b'\xFF' * 6)
         mac_addr1 = mac_address
         mac_addr2 = ((mac_address[0] - 1) & 0xFF).to_bytes(1, 'big') + mac_address[1:]
         
-        await send_required("JOY2_SAVE_MC_ADDR_STEP1",
+        await send_optional("JOY2_SAVE_MC_ADDR_STEP1",
                             {"mac-addr1": mac_addr1.hex(), "mac-addr2": mac_addr2.hex()})
-        await send_required("JOY2_SAVE_MC_ADDR_STEP2")
-        await send_required("JOY2_SAVE_MC_ADDR_STEP3")
-        await send_required("JOY2_SAVE_MC_ADDR_STEP4")
-        info(f"MAC address saved successfully.")
+        await send_optional("JOY2_SAVE_MC_ADDR_STEP2")
+        await send_optional("JOY2_SAVE_MC_ADDR_STEP3")
+        await send_optional("JOY2_SAVE_MC_ADDR_STEP4")
     
     # ═══ 震动功能位必须在发任何震动包之前打开 ═══
     # 这两条是「不震」的解药：feature bit 5 = Rumble。
@@ -430,11 +478,11 @@ async def initSendControllerCmd(client, controllerName: str, pair_id: int):
     await controllerCommand.send_command(client, "JOY2_SET_FEATURE_MASK")
     await controllerCommand.send_command(client, "JOY2_ENABLE_FEATURES")
 
-    await send_required("JOY2_CONNECTED_VIBRATION")
-    
-    # Set LED to show pair number (1-4)
+    await send_optional("JOY2_CONNECTED_VIBRATION")   # 提示震动，可选
+
+    # Set LED to show pair number (1-4)，可选
     led_value = get_player_led_value(pair_id)
-    await send_required("JOY2_SET_PLAYER_LED", {"led_player": led_value})
+    await send_optional("JOY2_SET_PLAYER_LED", {"led_player": led_value})
 
     await send_required("JOY2_INIT_SENSOR_DATA")
     await send_required("JOY2_START_SENSOR_DATA")

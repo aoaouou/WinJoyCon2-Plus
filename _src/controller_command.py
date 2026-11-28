@@ -66,7 +66,7 @@ class ControllerCommand:
     expectedResponse = None
     lastResponse = None
     _lock = asyncio.Lock()
-    RESPONSE_TIMEOUT = 3.0
+    RESPONSE_TIMEOUT = 1.5   # 实测 BLE 应答 <0.5s；3.0 太宽，失败时每条白等
     MAX_ATTEMPTS = 2
 
     def __new__(cls):
