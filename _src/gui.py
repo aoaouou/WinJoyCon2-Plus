@@ -68,19 +68,24 @@ class _NoWheelComboFilter(QObject):
 
 
 class _HelpDialog(QDialog):
-    """纯文本使用说明弹窗。"""
+    """纯文本使用说明弹窗（字号用 point，随高 DPI 缩放，中文清晰）。"""
     def __init__(self, title, text, parent=None):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setMinimumSize(520, 420)
+        self.setMinimumSize(760, 620)   # 字放大后窗口同步加大，减少滚动
         lay = QVBoxLayout(self)
         te = QTextEdit()
         te.setReadOnly(True)
         te.setPlainText(text)
-        te.setStyleSheet("color:#5c2340; background:#fffafd; border:1px solid #f3a8c9;"
-                         " border-radius:6px; font-size:13px;")
+        # 用 pt（点）而非 px：高 DPI 下随系统缩放，不再糊成一团小字。
+        te.setStyleSheet(
+            "QTextEdit{color:#5c2340; background:#fffafd; border:1px solid #f3a8c9;"
+            " border-radius:6px; font-family:'Microsoft YaHei UI','Microsoft YaHei','Segoe UI',sans-serif;"
+            " font-size:15pt; line-height:150%; padding:12px;}")
         lay.addWidget(te)
         btn = QPushButton(tr("关闭"))
+        btn.setMinimumHeight(40)
+        btn.setStyleSheet("font-size:12pt; padding:6px 24px;")
         btn.clicked.connect(self.accept)
         lay.addWidget(btn)
 
