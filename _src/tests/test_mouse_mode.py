@@ -148,9 +148,13 @@ check("陀螺scale=1.0x", abs(mm.get_dpi_scale(1, mm.MODE_GYRO) - 1.0) < 1e-6)
 # clamp：上限 3200，下限 1
 check("clamp上限", mm.set_dpi_value(1, 0, 99999, mm.MODE_MOUSE, persist=False) == 3200)
 check("clamp下限", mm.set_dpi_value(1, 0, -5, mm.MODE_MOUSE, persist=False) == 1)
-# 恢复默认，避免影响后续测试
-mm.set_dpi_value(1, 0, 400, mm.MODE_MOUSE, persist=False)
-mm.set_dpi_value(1, 1, 800, mm.MODE_MOUSE, persist=False)
+# 恢复默认按钮：四挡数值 + 挡位索引一起复位
+mm.set_dpi_value(1, 2, 2222, mm.MODE_MOUSE, persist=False)
+mm.get_config(1)["mouse_dpi_index"] = 3
+mm.reset_dpi(1, mm.MODE_MOUSE, persist=False)
+check("恢复默认:挡位回第2挡", mm.get_dpi_index(1) == 1)
+check("恢复默认:3挡回1600", mm.get_dpi_value(1, 2, mm.MODE_MOUSE) == 1600)
+check("恢复默认:1挡回400", mm.get_dpi_value(1, 0, mm.MODE_MOUSE) == 400)
 
 print()
 print("=" * 78)

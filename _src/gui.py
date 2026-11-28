@@ -181,10 +181,12 @@ class InputSettingsWidget(QWidget):
         """两种鼠标模式各自的四挡 DPI：既可拖滑块也可直接输入数值。
 
         上限 = 当前最高挡默认 DPI(3200)，下限 > 0(1)。修改即时生效并落盘。
+        底部「恢复默认」按钮：四挡数值回默认，并把当前挡位设回第 2 挡。
         """
         from control_type import mouse_mode as mm
         grp = QGroupBox(tr(title))
         form = QFormLayout()
+        widgets = []   # [(slider, spin), ...] 供恢复默认时刷新
         for level in range(4):
             row = QHBoxLayout()
             slider = QSlider(Qt.Horizontal)
@@ -213,6 +215,20 @@ class InputSettingsWidget(QWidget):
             row.addWidget(slider)
             row.addWidget(spin)
             form.addRow(tr("{n} 挡").format(n=level + 1), row)
+            widgets.append((slider, spin))
+
+        def restore_defaults(_checked=False):
+            mm.reset_dpi(self.pair_id, mode, persist=True)
+            # 刷新 UI，屏蔽信号避免逐个 valueChanged 重复写盘
+            for lv, (sl, sp) in enumerate(widgets):
+                default = mm.DPI_LEVELS[lv][0]
+                sl.blockSignals(True); sp.blockSignals(True)
+                sl.setValue(default); sp.setValue(default)
+                sl.blockSignals(False); sp.blockSignals(False)
+
+        btn = QPushButton(tr("恢复默认 DPI（四挡复位 + 回到第2挡）"))
+        btn.clicked.connect(restore_defaults)
+        form.addRow("", btn)
         grp.setLayout(form)
         return grp
 

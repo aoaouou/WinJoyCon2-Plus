@@ -497,6 +497,17 @@ def get_dpi_label(pair_id: int, mode: str = MODE_MOUSE) -> str:
     return f"{idx + 1} 挡 · {dpi} DPI · {dpi / DPI_BASE:g}x"
 
 
+def reset_dpi(pair_id: int, mode: str = MODE_MOUSE, persist: bool = True) -> None:
+    """恢复默认 DPI：该模式四挡数值回默认，并把当前挡位设回默认第 2 挡。"""
+    cfg = get_config(pair_id)
+    prefix = "gyro" if mode == MODE_GYRO else "mouse"
+    for level, (dpi, _scale) in enumerate(DPI_LEVELS):
+        cfg[f"{prefix}_dpi_{level}"] = dpi
+    cfg["mouse_dpi_index"] = DPI_DEFAULT_INDEX
+    if persist:
+        save_config(pair_id)
+
+
 def feed_dpi_keys(pair_id: int, plus_pressed: bool, minus_pressed: bool,
                   both_in_pointer: bool) -> int:
     """加减键切挡。双柄都在指针模式：+升/−降到顶停；单柄：都升循环。"""
